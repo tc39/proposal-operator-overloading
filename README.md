@@ -41,17 +41,17 @@ function _m(obj) { return new Decimal(obj.string); }
 // Usage:
 with operators from Decimal;  // Enable operator overloading for decimals
 
-1_m + 2_m // ==> 3_m
-3_m * 2_m // ==> 6_m
-1_m == 1_m // ==> true
-1_m == 1 // ==> true
-1 == 1m // ==> true
-1_m === 1 // ==> false, and not overloadable
+1_m + 2_m     // ==> 3_m
+3_m * 2_m     // ==> 6_m
+1_m == 1_m    // ==> true
+1_m == 1      // ==> true
+1 == 1m       // ==> true
+1_m === 1     // ==> false (not overloadable)
 ```
 
-### "Data science": Matrix/vector computations
+### Matrix/vector computations
 
-JavaScript is increasingly used for data processing and analysis, in systems like [stdlib](https://stdlib.io/) and [TensorFlow.js](https://js.tensorflow.org/). These calculations are made a bit more awkward because things involving vector, matrix and tensor calculations need to be done all via method chaining, rather than more naturally using operators as they can in many other programming languages. In systems like TensorFlow, operators can be used to construct an abstract formula in other programming languages. Operator overloading could provide that natural phrasing.
+JavaScript is increasingly used for data processing and analysis, with libraries like [stdlib](https://stdlib.io/). These calculations are made a bit more awkward because things involving vector, matrix and tensor calculations need to be done all via method chaining, rather than more naturally using operators as they can in many other programming languages. Operator overloading could provide that natural phrasing.
 
 ```js
 // This example uses the "Imperative API".
@@ -59,19 +59,17 @@ JavaScript is increasingly used for data processing and analysis, in systems lik
 
 const VectorOps = new Operators({
   "+"(a, b) {
-    let contents = [];
-    for (let i = 0; i < Math.min(a.contents.length, b.contents.length); i++)
-      contents[i] = a.contents[i] + b.contents[i];
-    return new Vector(contents);
+    return new Vector(a.contents.map((elt, i) => elt + b.contents[i]));
   },
-  "*"(a, b) { },
   "=="(a, b) {
-
+    return a.contents.length === b.contents.length &&
+           a.contents.every((elt, i) => elt == b.contents[i]);
   }
 }, {
   left: Number,
-  "+"(a, b) { },
-  "*"(a, b) { }
+  "*"(a, b) {
+    return new Vector(b.contents.map(elt => elt * a));
+  }
 });
 
 class Vector extends VectorOps {
@@ -86,13 +84,43 @@ Object.preventExtensions(Vector);  // ensure the operators don't change
 // Usage:
 with operators from Vector;
 
-new Vector([1, 2, 3]) + new Vector([4, 5, 6])  // ==> new Vector([5, 7, 9])
-3 * new Vector([1, 2, 3])  // ==> new Vector([3, 6, 9])
+new Vector([1, 2, 3]) + new Vector([4, 5, 6])   // ==> new Vector([5, 7, 9])
+3 * new Vector([1, 2, 3])                       // ==> new Vector([3, 6, 9])
+new Vector([1, 2, 3]) == new Vector([1, 2, 3])  // ==> true
 ```
 
-### Custom String-like types
+### Equation DSLs
 
-JavaScript strings
+JavaScript is used in systems with equation-based DSLs, such as [TensorFlow.js](https://js.tensorflow.org/). In systems like TensorFlow, operators can be used to construct an abstract formula in other programming languages. Operator overloading could allow these formula DSLs to be expressed as infix expressions, as people naturally think of them.
+
+For example, in TensorFlow.js's introductory tutorials, there is an [example](https://github.com/tensorflow/tfjs-examples/blob/master/polynomial-regression-core/index.js#L63) of an equation definition as follows:
+```js
+function predict(x) {
+  // y = a * x ^ 3 + b * x ^ 2 + c * x + d
+  return tf.tidy(() => {
+    return a.mul(x.pow(tf.scalar(3, 'int32')))
+      .add(b.mul(x.square()))
+      .add(c.mul(x))
+      .add(d);
+  });
+}
+```
+
+It's unfortunate that the equation has to be written twice, once to explain it and once to write it in code. With operator overloading and extensible literals, it might be written as follows instead:
+
+```js
+function predict(x) {
+  // y = a * x ^ 3 + b * x ^ 2 + c * x + d
+  return tf.tidy(() => {
+    return a * x ** 3_int32
+         + b * x ** 2_int32
+         + c * x
+         + d;
+  });
+}
+```
+
+At this point, maybe you don't even need that comment!
 
 ### Ergonomic CSS units calculations
 
@@ -129,8 +157,13 @@ JavaScript already has three types which have a meaning for operators like `+`: 
 
 ### Non-goals
 
-- User-defined operator tokens -- just the existing, built-in operators are enough.
-- Taking inheritance into account in the dispatch mechanism (e.g., prototype multiple dispatch)
+- User-defined operator tokens
+    - User-defined precedence for such tokens is unworkable to parse
+    - Hopefully the [pipeline operator](https://github.com/tc39/proposal-pipeline-operator) and [optional chaining](https://github.com/tc39/proposal-optional-chaining) will solve many of the cases that would motivate these operators
+    - We deliberately want to limit the syntactic divergence of JavaScript programs
+- Inheritance-based multiple dispatch using the prototype chain
+    - This is really complicated to implement and optimize reliably
+    - It's not clear what important use cases there are that aren't solved by single-level dispatch
 
 ## Mechanism
 
