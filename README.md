@@ -155,16 +155,6 @@ document.querySelector("#element").style.paddingLeft = 3_em + 2_px;
     - Don't encourage a crazy coding style in the ecosystem.
 - Operator overloading should be a way of 'explaining the language' and providing hooks into something that's already there, rather than adding something which is a very different pattern from built-in operator definitions.
 
-### Non-goals
-
-- User-defined operator tokens
-    - User-defined precedence for such tokens is unworkable to parse.
-    - Hopefully the [pipeline operator](https://github.com/tc39/proposal-pipeline-operator) and [optional chaining](https://github.com/tc39/proposal-optional-chaining) will solve many of the cases that would motivate these operators.
-    - We deliberately want to limit the syntactic divergence of JavaScript programs.
-- Inheritance-based multiple dispatch using the prototype chain
-    - This is really complicated to implement and optimize reliably.
-    - It's not clear what important use cases there are that aren't solved by single-level dispatch.
-
 ## Mechanism
 
 The operator overloading proposal is based on creation of objects with an `[[OperatorSet]]` internal slot, which points to a spec-internal Operator Set record. The Operator Set controls the dispatch of operators. A functional and decorator-based interface exists to define Operator Sets (called `Operators` in JavaScript) and create objects that have operators dispatched according to them.
@@ -260,7 +250,7 @@ For a binary operator which is not listed above (such as `*`, `/`, `<`) applied 
 
 ### Functional definition interface
 
-The `Operators` object (which could be exposed from a [built-in module](https://github.com/tc39/proposal-javascript-standard-library/)) can be called as a function. Like arrow functions, it is not constructable. It is passed a variable number of arguments. The first argument is ...
+The `Operators` object (which could be exposed from a [built-in module](https://github.com/tc39/proposal-javascript-standard-library/)) can be called as a function. Like arrow functions, it is not constructable. It is passed a variable number of arguments. The first argument is translates into the `[[SelfOperatorDefinition]]`, while subsequent arguments are individual entries in the `[[LeftOperatorDefinitions]]` or `[[RightOperatorDefinitions]]` lists (based on any `left:` or `right:` property they have).
 
 ### Decorator definition interface
 
@@ -276,7 +266,6 @@ The `Operators` object has two properties which are decorators:
         1. Take the associated define list and munge it into the argument for the functional definition interface.
         1. Call into the functional definition interface, and replace the superclass with the result of that call.
         1. Prevent changing the superclass, e.g. through Object.preventExtensions.
- 
 
 ### `with operators from` declarations
 
@@ -310,11 +299,45 @@ To include the checks about whether operators are currently in use, an extra che
 
 That would be equivalent to giving overloading behavior to existing objects (since an instance is never "done initializing"). Let's avoid that.
 
+### Can't we allow monkey-patching, for mocking, etc?
+
+You can do mocking by creating a separate operator-overloaded class which works like the one you're trying to mock, or even interacts with it. Or, you can make your own hooks into the operator definitions to allow mocking. But letting any code reach into the definition of the operators for any other type risks making operators much less reliable than JavaScript programmers are acustomed to.
+
+### Why does this have to be based on classes? I don't like classes!
+
+It doesn't *have* to be based on classes, but the reason the above examples use inheritance is that a base class constructor gives a chance to return a truly unique object, with an internal slot that guides the overloading behavior. It's not clear how to get that out of object literals, but you can use the above API in a way like this, if you'd like:
+
+```js
+function makePoint(obj) { return Object.assign(new pointOps, obj); }
+const pointOps = Operators({ "+"(a, b) { return makePoint({x: a.x + b.x, y: a.y + b.y}); });
+let point = makePoint({ x: 1, y: 2 });
+(point + point).y;  // 4
+```
+
+In the future, value types and/or value types might give a more ergonomic, non-class-based syntax.
+
+### Why not use symbols instead of a whole new dispatch mechanism?
+
+Symbols would allow monkey-patching, Proxy interception, and a general lack of robustness. They don't give a clear way to dispatch on the right operand, without requiring a *second* property access (like Python). The Python-style dispatch also has a left-to-right bias, which is unfortunate.
+
+### Why doesn't this let me define my own operator token?
+
+This proposal only allows overloading built-in operators, because:
+    - User-defined precedence for such tokens is unworkable to parse.
+    - Hopefully the [pipeline operator](https://github.com/tc39/proposal-pipeline-operator) and [optional chaining](https://github.com/tc39/proposal-optional-chaining) will solve many of the cases that would motivate these operators.
+    - We deliberately want to limit the syntactic divergence of JavaScript programs.
+
+### Should operator overloading use inheritance-based multiple dispatch involving the prototype chain?
+
+This proposal has opted against using something like Slate's Prototype Multiple Dispatch, because:
+    - This is really complicated to implement and optimize reliably.
+    - It's not clear what important use cases there are that aren't solved by single-level dispatch.
+
 ### How does this relate to other proposals?
 
 #### BigInt
 
-[BigInt](https://github.com/tc39/proposal-bigint/) provides definitions for how 
+[BigInt](https://github.com/tc39/proposal-bigint/) provides definitions for how operators work on just one new type. This proposal generalizes that to types defined in JavaScript.
 
 #### Typed Objects and Value Types
 
