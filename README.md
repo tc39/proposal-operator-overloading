@@ -133,7 +133,7 @@ Tab Atkins [proposed](https://www.xanthir.com/b4UD0) that CSS support syntax in 
 In this case, the CSSUnitValue platform objects would come with operator overloading already enabled. Their definition in the CSS Typed OM specification would, indirectly, make use of the same JavaScript mechanism that
 
 ```js
-with operators from CSSUnitValue;
+with operators from CSSNumericValue;
 const { _px, _em } = CSS;
 
 document.querySelector("#element").style.paddingLeft = 3_em + 2_px;
@@ -336,6 +336,10 @@ This proposal has opted against using something like Slate's Prototype Multiple 
 
 - This is really complicated to implement and optimize reliably.
 - It's not clear what important use cases there are that aren't solved by single-level dispatch.
+
+### If you define your other-type overloads based on a previously defined type, how do you know which type came first?
+
+If you have operators defined in two different modules, then to define overloads between them, import one module from the other, and don't make a circularity between the two. If you do this, the loading order wil lbe determinstic. The one that imports the other one is responsible for defining the overloads between the two types.
 
 ### How does this relate to other proposals?
 
