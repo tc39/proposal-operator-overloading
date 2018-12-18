@@ -1,8 +1,10 @@
-# Numeric operator overloading in JavaScript
+# Operator overloading in JavaScript
 
 Should JavaScript support operator overloading? This document examines why we might consider it and how it could work.
 
 ## Case studies
+
+Operator overloading is all about enabling richer libraries. This section gives four motivating use cases of such rich libraries.
 
 ### Numeric types
 
@@ -135,10 +137,6 @@ const { _px, _em } = CSS;
 document.querySelector("#element").style.paddingLeft = 3_em + 2_px;
 ```
 
-### Explain the platform
-
-JavaScript already has three types which have a meaning for operators like `+`: String, BigInt and Number. Operator overloading would make these built-in types a little less special.
-
 ## Design goals
 
 - Expressivity
@@ -153,18 +151,19 @@ JavaScript already has three types which have a meaning for operators like `+`: 
       or monkey-patchable, both for built-in types and for objects defined in
       other libraries.
     - It should not be possible to change the behavior of existing code
-      using operators by unexpectedly passing it an object which overloads operators.
+      using operators by unexpectedly passing it an object which overloads operators. (*If this is feasible.*)
     - Don't encourage a crazy coding style in the ecosystem.
+- Operator overloading should be a way of 'explaining the language' and providing hooks into something that's already there, rather than adding something which is a very different pattern from built-in operator definitions.
 
 ### Non-goals
 
 - User-defined operator tokens
-    - User-defined precedence for such tokens is unworkable to parse
-    - Hopefully the [pipeline operator](https://github.com/tc39/proposal-pipeline-operator) and [optional chaining](https://github.com/tc39/proposal-optional-chaining) will solve many of the cases that would motivate these operators
-    - We deliberately want to limit the syntactic divergence of JavaScript programs
+    - User-defined precedence for such tokens is unworkable to parse.
+    - Hopefully the [pipeline operator](https://github.com/tc39/proposal-pipeline-operator) and [optional chaining](https://github.com/tc39/proposal-optional-chaining) will solve many of the cases that would motivate these operators.
+    - We deliberately want to limit the syntactic divergence of JavaScript programs.
 - Inheritance-based multiple dispatch using the prototype chain
-    - This is really complicated to implement and optimize reliably
-    - It's not clear what important use cases there are that aren't solved by single-level dispatch
+    - This is really complicated to implement and optimize reliably.
+    - It's not clear what important use cases there are that aren't solved by single-level dispatch.
 
 ## Mechanism
 
@@ -191,55 +190,17 @@ Note, String overloading only supports the +, == and < operators, and not the ot
 
 ### Operator usage semantics
 
-#### Special operators
-
 A few operators are special, and the rest follow a pattern.
 
+#### Shared algorithms
+
 The operation ToOperand(arg [, hint]) does the following:
-1. If arg is an Object with an `[[OperatorSet]]` internal slot, return arg.
+1. If arg is an Object with an `[[OperatorSet]]` internal slot,
+    1. If the operator set of arg is not in the allowed set of operators, which had a `with operators from` declaration, based on the lexical scope, throw a TypeError.
+    1. Otherwise, return arg.
 1. Otherwise, return ToPrimitive(arg [, hint]).
 
-The definition of `+`(a, b):
-1. Set a to ToOperand(a).
-1. Set b to ToOperand(b).
-1. If Type(a) is String or Type(b) is String,
-    1. Return the string-concatenation of ToString(a) and ToString(b).
-1. Follow the remaining steps for an ordinary overloaded binary operator, given a and b.
-
-The definition of `==`(x, y):
-
-1. If Type(x) is the same as Type(y), and neither x nor y are Objects with an `[[OperatorSet]]` internal slot, then
-    1. Return the result of performing Strict Equality Comparison x === y.
-1. If x is null and y is undefined, return true.
-1. If x is undefined and y is null, return true.
-1. If Type(x) is Boolean, return the result of the comparison ToNumber(x) == y.
-1. If Type(y) is Boolean, return the result of the comparison x == ToNumber(y).
-1. If Type(x) is Object and x does not have an [[OperatorSet]] internal slot, set x to ToPrimitive(x).
-1. If Type(y) is Object and y does not have an [[OperatorSet]] internal slot, set y to ToPrimitive(y).
-1. Follow the remaining steps for an ordinary overloaded binary operator, given a and b.
-
-The definition of [Abstract Relational Comparison](https://tc39.github.io/ecma262/#sec-abstract-relational-comparison), which ends up defining <, <=, >, >=:
-1. Set a to ToOperand(a, hint Number), and set b to ToOperand(b, hint Number), in the order driven by their order in code.
-1. If a and b are both strings, follow the current logic for comparing two strings.
-1. Otherwise, follow the remaining steps for an ordinary overloaded binary operator, given a and b, using the common lessThan operator for the operation.
-
-Note that String can only be overloaded for the above operators, and cannot be usefully overloaded for the below "numerical" operators.
-
-#### Normal numerical operators
-
-The operation ToNumericOperand(arg) is used in the following definitions:
-1. If Type(arg) is Number or Type(arg) is BigInt, return arg.
-1. If Type(arg) is Object and arg has a [[OperatorSet]] internal slot, return arg.
-1. Return ToNumeric(arg).  NOTE: This step may only convert to one of the built-in numeric types; value types may define more.
-
-For a unary operator (such as unary `+`, unary `-`, `++`, `--`, `~`) applied to `arg`:
-1. Let value be ToNumericOperand(arg).
-1. If the Operator Set of value doesn't have a definition for the operator, throw a TypeError.
-1. Otherwise, call the operator on value and return the result.
-
-For a binary operator which is not listed above (such as `*`, `/`, `<`) applied to `a` and `b`:
-1. Set a to ToNumericOperand(a).
-1. Set b to ToNumericOperand(b).
+DispatchBinaryOperator(operator, a, b):
 1. If the operator set of a and b are the same,
     1. If the common operator set does not have a definition for the operator in its `[[SelfOperatorDefinition]]` table, throw a TypeError.
     1. Otherwise, apply the definition to the arguments and return the result.
@@ -250,11 +211,84 @@ For a binary operator which is not listed above (such as `*`, `/`, `<`) applied 
 1. Otherwise, b's operator set has a lower `[[OperatorCounter]]` than a's operator set,
     1. Perform the instructions for the corresponding case, but referencing the `[[LeftOperatorDefinitions]]` instead of the left.
 
+DispatchUnaryOperator(operator, arg):
+1. If the Operator Set of value doesn't have a definition for the operator, throw a TypeError.
+1. Otherwise, call the operator on value and return the result.
+
+#### Special operators
+
+The definition of `+`(a, b):
+1. Set a to ToOperand(a).
+1. Set b to ToOperand(b).
+1. If Type(a) is String or Type(b) is String,
+    1. Return the string-concatenation of ToString(a) and ToString(b).
+1. Return DispatchBinaryOperator(a, b).
+
+The definition of `==`(x, y):
+1. If Type(x) is the same as Type(y), and neither x nor y are Objects with an `[[OperatorSet]]` internal slot, then
+    1. Return the result of performing Strict Equality Comparison x === y.
+1. If x is null and y is undefined, return true.
+1. If x is undefined and y is null, return true.
+1. If Type(x) is Boolean, return the result of the comparison ToNumber(x) == y.
+1. If Type(y) is Boolean, return the result of the comparison x == ToNumber(y).
+1. If Type(x) is Object and x does not have an [[OperatorSet]] internal slot, set x to ToPrimitive(x).
+1. If Type(y) is Object and y does not have an [[OperatorSet]] internal slot, set y to ToPrimitive(y).
+1. Return DispatchBinaryOperator(a, b).
+
+The definition of [Abstract Relational Comparison](https://tc39.github.io/ecma262/#sec-abstract-relational-comparison), which ends up defining <, <=, >, >=:
+1. Set a to ToOperand(a, hint Number), and set b to ToOperand(b, hint Number), in the order driven by their order in code.
+1. If a and b are both strings, follow the current logic for comparing two strings.
+1. Otherwise, follow the remaining steps for an ordinary overloaded binary operator, given a and b, using the common lessThan operator for the operation.
+
+Note that String can only be overloaded for the above operators, and cannot be usefully overloaded for the below "numerical" operators.
+
+#### Numerical operators
+
+The operation ToNumericOperand(arg) is used in the following definitions:
+1. If Type(arg) is Number or Type(arg) is BigInt, return arg.
+1. If Type(arg) is Object and arg has a `[[OperatorSet]]` internal slot, return ToOperand(arg).  NOTE: The ToOperand call is just to check whether it was declared as `with operators from`.
+1. Return ToNumeric(arg).  NOTE: This step may only convert to one of the built-in numeric types; value types may define more.
+
+For a unary operator (such as unary `-`, `++`, `--`, `~`) applied to `arg`:
+1. Let value be ToNumericOperand(arg).
+1. Return DispatchUnaryOperator(operator, arg).
+
+For a binary operator which is not listed above (such as `*`, `/`, `<`) applied to `a` and `b`:
+1. Set a to ToNumericOperand(a).
+1. Set b to ToNumericOperand(b).
+1. Return DispatchBinaryOperator(operator, a, b).
+
 ### Functional definition interface
+
+The `Operators` object (which could be exposed from a [built-in module](https://github.com/tc39/proposal-javascript-standard-library/)) can be called as a function. Like arrow functions, it is not constructable. It is passed a variable number of arguments. The first argument is ...
 
 ### Decorator definition interface
 
-### `with operator` declarations
+The decorator interface provides convenient syntactic sugar over the functional interface above.
+
+The `Operators` object has two properties which are decorators:
+- `Operators.define`, a method decorator, which does the following:
+    1. Returns the method as is, adding a finisher which closes over the method and the arguments to the decorator.
+    1. The finisher appends a tuple containing the method function and the other arguments to a List, which is "associated with" the class.
+- `Operators.overloaded`, a class decorator, which does the following:
+    1. Add a finisher to do the following things:
+        1. Assert that the superclass is Operators (which will just throw if called as a super constructor)
+        1. Take the associated define list and munge it into the argument for the functional definition interface.
+        1. Call into the functional definition interface, and replace the superclass with the result of that call.
+        1. Prevent changing the superclass, e.g. through Object.preventExtensions.
+ 
+
+### `with operators from` declarations
+
+The purpose of these declarations is to meet this goal:
+
+> It should not be possible to change the behavior of existing code using operators by unexpectedly passing it an object which overloads operators. 
+
+The idea of these declarations is, within a particular chunk of code, only explicitly enabled operator overloads should be used. The `with operators from` declaration specifically enables certain types for overloading, leaving the rest prohibited.
+
+When such a declaration is reached, the argument `arg` has Get(arg, `Operators.operators`) applied, to get the related Operators instance, and then the `[[OperatorSetDefinition]]` internal slot of that is read. If that doesn't exist, a TypeError is thrown. If it does, then the relevant operator set is added to the lexical scope for permitted use.
+
+It's not clear whether the performance (see below) or ergonomics impact will outweigh the predictability/security benefits of this check; more thought and discussion is needed.
 
 ### Implementation notes
 
