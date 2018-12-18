@@ -323,15 +323,17 @@ Symbols would allow monkey-patching, Proxy interception, and a general lack of r
 ### Why doesn't this let me define my own operator token?
 
 This proposal only allows overloading built-in operators, because:
-    - User-defined precedence for such tokens is unworkable to parse.
-    - Hopefully the [pipeline operator](https://github.com/tc39/proposal-pipeline-operator) and [optional chaining](https://github.com/tc39/proposal-optional-chaining) will solve many of the cases that would motivate these operators.
-    - We deliberately want to limit the syntactic divergence of JavaScript programs.
+
+- User-defined precedence for such tokens is unworkable to parse.
+- Hopefully the [pipeline operator](https://github.com/tc39/proposal-pipeline-operator) and [optional chaining](https://github.com/tc39/proposal-optional-chaining) will solve many of the cases that would motivate these operators.
+- We deliberately want to limit the syntactic divergence of JavaScript programs.
 
 ### Should operator overloading use inheritance-based multiple dispatch involving the prototype chain?
 
 This proposal has opted against using something like Slate's Prototype Multiple Dispatch, because:
-    - This is really complicated to implement and optimize reliably.
-    - It's not clear what important use cases there are that aren't solved by single-level dispatch.
+
+- This is really complicated to implement and optimize reliably.
+- It's not clear what important use cases there are that aren't solved by single-level dispatch.
 
 ### How does this relate to other proposals?
 
