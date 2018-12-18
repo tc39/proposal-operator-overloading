@@ -1,4 +1,4 @@
-# Operator overloading in JavaScript
+# Numeric operator overloading in JavaScript
 
 Should JavaScript support operator overloading? This document examines why we might consider it and how it could work.
 
@@ -154,6 +154,7 @@ JavaScript already has three types which have a meaning for operators like `+`: 
       other libraries.
     - It should not be possible to change the behavior of existing code
       using operators by unexpectedly passing it an object which overloads operators.
+    - Don't encourage a crazy coding style in the ecosystem.
 
 ### Non-goals
 
@@ -167,7 +168,93 @@ JavaScript already has three types which have a meaning for operators like `+`: 
 
 ## Mechanism
 
-Operators is a function which returns a class that can be inherited from. 
+The operator overloading proposal is based on creation of objects with an `[[OperatorSet]]` internal slot, which points to a spec-internal Operator Set record. The Operator Set controls the dispatch of operators. A functional and decorator-based interface exists to define Operator Sets (called `Operators` in JavaScript) and create objects that have operators dispatched according to them.
+
+### Operator Sets
+
+The global counter OperatorCounter is used to assign an integer to each Operator Set.
+
+An Operator Definitition Table is a table with values for each [numeric type operation](https://tc39.github.io/proposal-bigint/#table-numeric-type-ops), as enumerated in the BigInt specification, either JavaScript function objects or the `~empty~` sentinel value. A "binary Operator Definition Table" has `~empty~` as its value for each unary operation. Note that the sameValue and sameValueZero operations from that table are never invoked through operator overloading.
+
+Each Operator Set record has the following fields, none of which are ever modified after the operator set is created:
+
+| Name | Type | Description |
+|------|------|-------------|
+| `[[OperatorCounter]]` | integer | Value of the OperatorCounter when this Operator Set was created |
+| `[[SelfOperatorDefinition]]` | Operator Definition Table | Definition of unary operators, and binary operators with both operands being of this Operator Set |
+| `[[LeftOperatorDefinitions]]` | List of length `[[OperatorCounter]]` with elements either `~empty~` or binary Operator Defintion Table | Operator definitions for when this is the left operand, and something of a lower OperatorCounter is the right operand |
+| `[[RightOperatorDefinitions]]` | "" | "" but for the right operand |
+
+Built-in Operator Sets exist for the built-in numeric primitive types: String, BigInt and Number. The phrase "the Operator Set of `x`" refers to `x.[[OperatorSet]]` if `x` is an object, and the built-in Operator Set for those four types, which describes the currently specified behavior.
+
+Note, String overloading only supports the +, == and < operators, and not the other "numeric" operators. Boolean and Symbol may not have operators overloaded on them.
+
+### Operator usage semantics
+
+#### Special operators
+
+A few operators are special, and the rest follow a pattern.
+
+The operation ToOperand(arg [, hint]) does the following:
+1. If arg is an Object with an `[[OperatorSet]]` internal slot, return arg.
+1. Otherwise, return ToPrimitive(arg [, hint]).
+
+The definition of `+`(a, b):
+1. Set a to ToOperand(a).
+1. Set b to ToOperand(b).
+1. If Type(a) is String or Type(b) is String,
+    1. Return the string-concatenation of ToString(a) and ToString(b).
+1. Follow the remaining steps for an ordinary overloaded binary operator, given a and b.
+
+The definition of `==`(x, y):
+
+1. If Type(x) is the same as Type(y), and neither x nor y are Objects with an `[[OperatorSet]]` internal slot, then
+    1. Return the result of performing Strict Equality Comparison x === y.
+1. If x is null and y is undefined, return true.
+1. If x is undefined and y is null, return true.
+1. If Type(x) is Boolean, return the result of the comparison ToNumber(x) == y.
+1. If Type(y) is Boolean, return the result of the comparison x == ToNumber(y).
+1. If Type(x) is Object and x does not have an [[OperatorSet]] internal slot, set x to ToPrimitive(x).
+1. If Type(y) is Object and y does not have an [[OperatorSet]] internal slot, set y to ToPrimitive(y).
+1. Follow the remaining steps for an ordinary overloaded binary operator, given a and b.
+
+The definition of [Abstract Relational Comparison](https://tc39.github.io/ecma262/#sec-abstract-relational-comparison), which ends up defining <, <=, >, >=:
+1. Set a to ToOperand(a, hint Number), and set b to ToOperand(b, hint Number), in the order driven by their order in code.
+1. If a and b are both strings, follow the current logic for comparing two strings.
+1. Otherwise, follow the remaining steps for an ordinary overloaded binary operator, given a and b, using the common lessThan operator for the operation.
+
+Note that String can only be overloaded for the above operators, and cannot be usefully overloaded for the below "numerical" operators.
+
+#### Normal numerical operators
+
+The operation ToNumericOperand(arg) is used in the following definitions:
+1. If Type(arg) is Number or Type(arg) is BigInt, return arg.
+1. If Type(arg) is Object and arg has a [[OperatorSet]] internal slot, return arg.
+1. Return ToNumeric(arg).  NOTE: This step may only convert to one of the built-in numeric types; value types may define more.
+
+For a unary operator (such as unary `+`, unary `-`, `++`, `--`, `~`) applied to `arg`:
+1. Let value be ToNumericOperand(arg).
+1. If the Operator Set of value doesn't have a definition for the operator, throw a TypeError.
+1. Otherwise, call the operator on value and return the result.
+
+For a binary operator which is not listed above (such as `*`, `/`, `<`) applied to `a` and `b`:
+1. Set a to ToNumericOperand(a).
+1. Set b to ToNumericOperand(b).
+1. If the operator set of a and b are the same,
+    1. If the common operator set does not have a definition for the operator in its `[[SelfOperatorDefinition]]` table, throw a TypeError.
+    1. Otherwise, apply the definition to the arguments and return the result.
+1. Otherwise, if a's operator set has a lower `[[OperatorCounter]]` than b's operator set,
+    1. Find the relevant operator definition table in the b.`[[OperatorSet]]`.`[[OperatorCounter]]`'th element of a.`[[OperatorSet]]`.`[[RightOperatorDefinitions]]`.
+    1. If the operator is `~empty~` in that operator definition table, throw a TypeError.
+    1. Otherwise, apply the operator to the arguments using the operator table.
+1. Otherwise, b's operator set has a lower `[[OperatorCounter]]` than a's operator set,
+    1. Perform the instructions for the corresponding case, but referencing the `[[LeftOperatorDefinitions]]` instead of the left.
+
+### Functional definition interface
+
+### Decorator definition interface
+
+### `with operator` declarations
 
 ### Implementation notes
 
