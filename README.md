@@ -24,19 +24,19 @@ class Decimal extends Operators {
   constructor(arg) { this.#big = new Big(arg); }
 
   @Operators.define("+")
-  #plus(a, b) { return a.plus(b); }
+  #plus(a, b) { return a.#big.plus(b.#big); }
 
   @Operators.define("*")
-  #plus(a, b) { return a.times(b); }
+  #plus(a, b) { return a.#big.times(b.#big); }
 
   @Operators.define("==")
-  #decimalEqualsDecimal(a, b) { return a.eq(b); }
+  #decimalEqualsDecimal(a, b) { return a.#big.eq(b.#big); }
 
   @Operators.define("==", { left: Number })
-  #numberEqualsDecimal(a, b) { return b.eq(a); }
+  #numberEqualsDecimal(a, b) { return b.#big.eq(a); }
 
   @Operators.define("==", { right: Number })
-  #decimalEqualsNumber(a, b) { return a.eq(b); }
+  #decimalEqualsNumber(a, b) { return a.#big.eq(b); }
 }
 
 // Definition in terms of extensible literals proposal
