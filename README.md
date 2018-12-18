@@ -201,7 +201,7 @@ DispatchBinaryOperator(operator, a, b):
     1. If the operator is `~empty~` in that operator definition table, throw a TypeError.
     1. Otherwise, apply the operator to the arguments using the operator table.
 1. Otherwise, b's operator set has a lower `[[OperatorCounter]]` than a's operator set,
-    1. Perform the instructions for the corresponding case, but referencing the `[[LeftOperatorDefinitions]]` instead of the left.
+    1. Perform the instructions for the corresponding case, but referencing the `[[LeftOperatorDefinitions]]` instead of `[[RightOperatorDefinitions]]`.
 
 DispatchUnaryOperator(operator, arg):
 1. If the Operator Set of value doesn't have a definition for the operator, throw a TypeError.
