@@ -2,6 +2,8 @@
 
 Should JavaScript support operator overloading? This document examines why we might consider it and how it could work.
 
+(Status: Not at a stage; not presented in TC39)
+
 ## Case studies
 
 Operator overloading is all about enabling richer libraries. This section gives four motivating use cases of such rich libraries.
