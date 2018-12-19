@@ -175,6 +175,19 @@ document.querySelector("#element").style.paddingLeft = 3_em + 2_px;
     - When enough type declarations are present, it should be feasible to implement efficiently in TypeScript, similarly to BigInt's implementation.
 - Operator overloading should be a way of 'explaining the language' and providing hooks into something that's already there, rather than adding something which is a very different pattern from built-in operator definitions.
 
+### Avoiding classic pitfalls of operator overloading and readability
+
+The accusation is frequently made at C++ and Haskell that they are unreadable due to excessive use of obscure operators. On the other hand, in the Python ecosystem, operators are generally considered to make code significantly cleaner, e.g., in their use in NumPy.
+
+This proposal includes several subtle design decisions to nudge the ecosystem in a direction of not using operator overloading in an excessive way, while still supporting the motivating case studies:
+- Operators can be overloaded for one operand being a new user-defined type and the other operand being a previously defined type only in certain circumstances:
+    - Strings only support overloading for `+` and the comparison operators.
+    - Non-numeric, non-string primitives don't support overloading at all.
+    - When one operand is an ordinary Object and the other is an Object with overloaded operators, the ordinary object is first coerced to some kind of primitive, making it less useful unless both operands were set up for overloading.
+- ToPrimitive, ToNumber, ToString, etc are *not* extended to ever return non-primitives.
+- Only built-in operators are supported; there are no user-defined operators.
+- Using overloaded operators requires the `with operators from` statement, adding a little bit of friction, so overloaded operators are more likely to be used when they "pay for" that friction themselves from the perspective of a library user.
+
 ## Usage documentation
 
 This section includes high-level for how to use and define overloaded operators, targeted at JavaScript programmers potentially using the feature. For low-level spec-like text, see [PROTOSPEC.md](https://github.com/littledan/proposal-operator-overloading/blob/master/PROTOSPEC.md).
@@ -200,20 +213,7 @@ The following operators do not support overloading:
 
 To use operator overloading, import a module that exports a class, and enable operators on it using a `with operators from` declaration.
 
-### Avoiding classic pitfalls of operator overloading and readability
-
-The accusation is frequently made at C++ and Haskell that they are unreadable due to excessive use of obscure operators. On the other hand, in the Python ecosystem, operators are generally considered to make code significantly cleaner, e.g., in their use in NumPy.
-
-This proposal includes several subtle design decisions to nudge the ecosystem in a direction of not using operator overloading in an excessive way, while still supporting the motivating case studies:
-- Operators can be overloaded for one operand being a new user-defined type and the other operand being a previously defined type only in certain circumstances:
-    - Strings only support overloading for `+` and the comparison operators.
-    - Non-numeric, non-string primitives don't support overloading at all.
-    - When one operand is an ordinary Object and the other is an Object with overloaded operators, the ordinary object is first coerced to some kind of primitive, making it less useful unless both operands were set up for overloading.
-- ToPrimitive, ToNumber, ToString, etc are *not* extended to ever return non-primitives.
-- Only built-in operators are supported; there are no user-defined operators.
-- Using overloaded operators requires the `with operators from` statement, adding a little bit of friction, so overloaded operators are more likely to be used when they "pay for" that friction themselves from the perspective of a library user.
-
-#### `with operators from` declarations
+### `with operators from` declarations
 
 Operator overloading is only enabled for the classes that you specifically opt in to. To do this overloading, use a `with operators from` declaration, follwed by a comma-separated list of classes that overload operators that you want to enable.
 
@@ -231,7 +231,36 @@ new Vector([1, 2, 3]) * new Scalar(3);  // Works, returning new Vector([3, 6, 9]
 
 The scope of enabling operators is based on JavaScript blocks (e.g., you can enable operators within a specific function, rather than globally). By default, built-in types like `String`, `Number` and `BigInt` already have operators enabled.
 
-### Functional definition interface
+### Decorator definition interface
+
+Recommended usage:
+```js
+@Operators.overloaded
+class MyClass extends Operators {
+  @Operators.define("+")
+  static add(a, b) { /* ... */ }
+}
+```
+
+The `Operators` object has two properties which are decorators:
+
+#### `@Operators.define`
+
+`@Operators.define` is a method decorator used to say that a particular method is used as the definition of an operator. The particular operator is indicated as a string argument to `@Operators.define`. The methods are called with two arguments, for both operands, and `undefined` as the `this` value.
+
+An optional second argument can be of the form `{ left: OtherClass }` or `{ right: OtherClass }`--this will define the overload when `MyClass` is one operand and the other operand is an instance of `OtherClass`. To be accepted, the `OtherClass` must have this operator in the set of operators it's open to definitions for.
+
+#### `@Operators.overloaded`
+
+`@Operators.overloaded` is a class decorator used on classes that overload operators.
+
+`@Operators.overloaded` takes a single optional argument, which is an options bag, that has one option, `open`, which is an Array of operators which are allowed to be overloaded by future types, with one operand being of this type and the other of a future-defined type.
+  
+Classes that define operators must extend `Operators`.
+
+### Low-level, function-style definition interface
+
+The above decorator interface provides convenient syntactic sugar over the functional interface, described in this section.
 
 Recommended usage:
 ```js
@@ -240,119 +269,19 @@ class MyClass extends operators { /* ... */ }
 Object.preventExtensions(MyClass);
 ```
 
-The `Operators` object is called with 
+The `Operators` function is called with one required argument, which is a dictionary of operator definitions. The property keys are operator names like `+` and the values are functions, which take two arguments, which implement the operator. The dictionary may also have an `open` property, as described for `@Operators.overloaded` above.
 
-It is passed a variable number of arguments. The first argument is translates into the `[[SelfOperatorDefinition]]`, while subsequent arguments are individual entries in the `[[LeftOperatorDefinitions]]` or `[[RightOperatorDefinitions]]` lists (based on any `left:` or `right:` property they have).
+The subsequent parameters of `Operators` are similar dictionaries of operator definitions, used for defining the behavior of operators when one of the parameters is of a type declared previously: they must have either a `left:` or `right:` property, indicating the type of the other operand.
 
-Note: The `Operators` function could be exposed from a [built-in module](https://github.com/tc39/proposal-javascript-standard-library/)
-
-### Decorator definition interface
-
-The decorator interface provides convenient syntactic sugar over the functional interface above.
-
-The `Operators` object has two properties which are decorators:
-- `Operators.define`, a method decorator
-- `Operators.overloaded`, a class decorator
-
-## Cross-language comparison
-
-Most programming lanuguage designers have to consider operator semantics at some point, so we have a lot to refer to when considering the choices other languages have made.
-
-### Which operators support overloading?
-
-#### A static set of operators are overloadable
-
-Languages: Python, Ruby, Lua, [Matlab](https://www.mathworks.com/help/matlab/matlab_oop/implementing-operators-for-your-class.html), Kotlin, C#, Rust ([considered and rejected](https://github.com/rust-lang/rfcs/issues/818))
-
-This seems to be the most common pattern. Within this, it's also common to define some operators in terms of others, as this proposal does.
-
-#### Operators just don't have special syntax
-
-Languages:  Common Lisp, Smalltalk, Self, Slate, Factor, Forth
-
-- In the Lisp lineage (Common Lisp, Clojure, Scheme, Racket), code is written with prefix syntax. Function names can traditionally include operator characters.
-- In the Forth lineage (Factor, Forth), operators are post-fix functions; tokens are typically delimited by spaces, so a function name can include punctuation/operator characters.
-- In the Smalltalk lineage (Smalltalk, Self, Slate), operators are left-associative, all have the same precedence, and a message which begins with an operator-like character can omit the `:` and is always taken to have just one argument.
-
-#### Predictable precedence, user-defined operators
-
-Languages: OCaml, Scala, R
-
-[OCaml operator precedence](https://caml.inria.fr/pub/docs/manual-ocaml/expr.html) is based on the initial character(s) of the operator.
-
-R doesn't have operator overloading, but it lets programmers define their own operators in between `%`, e.g., `%abc%`, which are then treated as functions. Haskell has a related facility, where any function `f` can be used infix by enclosing it in backticks.
-
-#### User-defined operator precedence
-
-Languages: Haskell, Swift, Prolog
-
-These can be especially difficult to parse! User-defined operator precedence is "anti-modular" since you need to import the precedence and associativity declarations of the imported modules in order to be able to even parse a particular module. Sometimes this ends up requiring multiple passes over the module graph in a practical implementation.
-
-#### Takeaways
-
-Allowing the built-in operators to be overloaded, and not supporting user-defined operators, is a middle-of-the-road, common design. The cross-language comparison validates this proposal's conservative choice, as user-defined operators cause issues in parsing and readability.
-
-### Dispatch mechanism for operators
-
-#### Operators are just functions, with no dispatch
-
-Languages: ML, Forth, R (user-defined operators)
-
-These languages may have operator syntax, but they just operate on a fixed type. In ML, the pattern is to use differnet operators for different types: For example, `+` for integers and `+.` for floats.
-
-#### Built-in, fixed numeric tower
-
-Languages: Java, C, Scheme, Factor, R (built-in operators), Clojure, Common Lisp, [Go](https://golang.org/doc/faq#overloading), PHP ([RFC](https://wiki.php.net/rfc/operator-overloading) apparently not yet in effect)
-
-The choice to omit overloading is often a deliberate design decision. Excluding operator overloading and using a dependable set of built-in types is explained to enhance the predictability of code.
-
-#### Static dispatch
-
-Languages: C++, Swift
-
-C++ overloads operators in a static way, with logic similar to its function type overloading mechanism. See [isocpp's FAQ](https://isocpp.org/wiki/faq/operator-overloading) for details.
-
-[Swift operators](https://docs.swift.org/swift-book/LanguageGuide/AdvancedOperators.html) can be used as part of simple overloading (as in the examples in that page), or can be defined as part of a [protocol](https://docs.swift.org/swift-book/LanguageGuide/Protocols.html).
-
-#### Dispatch based on the left operand
-
-Languages: Smalltalk, Self, Ruby
-
-Languages in the Smalltalk lineage (including Smalltalk, Self and Ruby) send the operator to the receiver directly as an ordinary message send.
-
-#### Check the left operand, then the right, for possible overloads
-
-Languages: Python, Lua
-
-For `+`, Python checks for an `__add__` method on the left operand, and then an `__radd__` method on the right operand.  Similarly, for `+`, Lua will look in the metatable of the left operand for `__add`, and if it's missing, look in the metadatable for the right operand.
-
-This enables useful patterns like multiplying a number by a vector, with the vector as the right operand, and the one that defines the overload.
-
-However, it's hard to imagine how to implement this without significant performance overhead, and how to define it in a way that puts built-in types on a level playing field with user-defined objects with operator overloading.
-
-#### Single dispatch based on both operands
-
-Languages: [Haskell](http://hackage.haskell.org/package/base-4.12.0.0/docs/Prelude.html#t:Num), [Rust](https://doc.rust-lang.org/std/ops/index.html)
-
-These langauges each have a way to define an interface which specifies that a method should have the receiver and an argument of the same type (or, in Rust's case, a concrete subclass can specify a type parameter for the second operand to override the default of being the same as the left operand). This technique is used in the definition of operators.
-
-#### Full multimethods for operators
-
-The only language I know of that works like this is Slate. See [the classic Slate paper](http://www.cs.cmu.edu/~aldrich/papers/ecoop05pmd.pdf) for more details on Slate's prototype multiple dispatch mechanism.
-
-Common Lisp and Closure support multimethods, but the built-in arithmetic functions are *not* user-extendable multimethods. Instead, they have a fixed numeric tower.
-
-Prototype multiple dispatch seems suboptimal because it requires a complex traversal of the inheritance hierarchy, and use cases are unclear. The Slate paper suggests dynamically changing the prototype as an object moves between "roles", which is not a popular idiom for that purposes in JavaScript as far as I know.
-
-#### Call a method on the higher-precedence operand
-
-Matlab's ["precedence"](https://www.mathworks.com/help/matlab/matlab_oop/object-precedence-in-expressions-using-operators.html) system handles operators by determining which operand has lower precedence, and calling the method on the operand with higher precedence. Precedence is indicated with the InferiorClasses property, rather than implicitly based on execution order as in this proposal.
-
-#### Takeaways
-
-The proposal here is most similar to Matlab semantics, and differs from operator dispatch in most object-oriented programming languages. We have good reasons here for not using property access for operator overloading, but we should proceed with caution.
+Note: The `Operators` function and the above decorators could be exposed from a [built-in module](https://github.com/tc39/proposal-javascript-standard-library/) rather than being a property of the global object, depending on how that proposal goes.
 
 ## Q/A
+
+### How does this proposal compare to operator overloading in other languages?
+
+For a detailed investigation, see [LANGCOMP.md](https://github.com/littledan/proposal-operator-overloading/blob/master/LANGCOMP.md). tl;dr:
+- It's a pretty popular design choice to conservatively support overloading only on some operators, and to define some in terms of others, as this proposal does. User-defined operators have been difficult to varying extents in other programming languages.
+- The way this proposal dispatches on the two operands is somewhat novel, most similar to Matlab. Unfortunately, of the established, popular mechanisms meet the design goals articulated in this document.
 
 ### Can this work with subclasses, as a mixin?
 
