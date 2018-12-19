@@ -200,6 +200,19 @@ The following operators do not support overloading:
 
 To use operator overloading, import a module that exports a class, and enable operators on it using a `with operators from` declaration.
 
+### Avoiding classic pitfalls of operator overloading and readability
+
+The accusation is frequently made at C++ and Haskell that they are unreadable due to excessive use of obscure operators. On the other hand, in the Python ecosystem, operators are generally considered to make code significantly cleaner, e.g., in their use in NumPy.
+
+This proposal includes several subtle design decisions to nudge the ecosystem in a direction of not using operator overloading in an excessive way, while still supporting the motivating case studies:
+- Operators can be overloaded for one operand being a new user-defined type and the other operand being a previously defined type only in certain circumstances:
+    - Strings only support overloading for `+` and the comparison operators.
+    - Non-numeric, non-string primitives don't support overloading at all.
+    - When one operand is an ordinary Object and the other is an Object with overloaded operators, the ordinary object is first coerced to some kind of primitive, making it less useful unless both operands were set up for overloading.
+- ToPrimitive, ToNumber, ToString, etc are *not* extended to ever return non-primitives.
+- Only built-in operators are supported; there are no user-defined operators.
+- Using overloaded operators requires the `with operators from` statement, adding a little bit of friction, so overloaded operators are more likely to be used when they "pay for" that friction themselves from the perspective of a library user.
+
 #### `with operators from` declarations
 
 Operator overloading is only enabled for the classes that you specifically opt in to. To do this overloading, use a `with operators from` declaration, follwed by a comma-separated list of classes that overload operators that you want to enable.
@@ -220,7 +233,18 @@ The scope of enabling operators is based on JavaScript blocks (e.g., you can ena
 
 ### Functional definition interface
 
-The `Operators` object (which could be exposed from a [built-in module](https://github.com/tc39/proposal-javascript-standard-library/)) can be called as a function. Like arrow functions, it is not constructable. It is passed a variable number of arguments. The first argument is translates into the `[[SelfOperatorDefinition]]`, while subsequent arguments are individual entries in the `[[LeftOperatorDefinitions]]` or `[[RightOperatorDefinitions]]` lists (based on any `left:` or `right:` property they have).
+Recommended usage:
+```js
+const operators = Operators(operatorDefinitions [, leftOrRightOperatorDefinitions...])
+class MyClass extends operators { /* ... */ }
+Object.preventExtensions(MyClass);
+```
+
+The `Operators` object is called with 
+
+It is passed a variable number of arguments. The first argument is translates into the `[[SelfOperatorDefinition]]`, while subsequent arguments are individual entries in the `[[LeftOperatorDefinitions]]` or `[[RightOperatorDefinitions]]` lists (based on any `left:` or `right:` property they have).
+
+Note: The `Operators` function could be exposed from a [built-in module](https://github.com/tc39/proposal-javascript-standard-library/)
 
 ### Decorator definition interface
 
@@ -327,10 +351,6 @@ Matlab's ["precedence"](https://www.mathworks.com/help/matlab/matlab_oop/object-
 #### Takeaways
 
 The proposal here is most similar to Matlab semantics, and differs from operator dispatch in most object-oriented programming languages. We have good reasons here for not using property access for operator overloading, but we should proceed with caution.
-
-### Ecosystem: Do operators tend to make things unreadable?
-
-The accusation is frequently made at C++ and Haskell that they are unreadable due to excessive use of obscure operators. On the other hand, in the Python ecosystem, operators are generally considered to make code significantly cleaner, e.g., in their use in NumPy. It's not clear what leads to the difference, or how we could drive a positive, clean-code culture here.
 
 ## Q/A
 
