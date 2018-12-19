@@ -166,7 +166,7 @@ document.querySelector("#element").style.paddingLeft = 3_em + 2_px;
       using operators by unexpectedly passing it an object which overloads operators. (*If this is feasible.*)
     - Don't encourage a crazy coding style in the ecosystem.
 - Efficiently implementable
-    - In native implementations, don't slow down code which doesn't take advantage of operator overloading (both within a module that uses operator overloading in some other paths, and .
+    - In native implementations, don't slow down code which doesn't take advantage of operator overloading (including within a module that uses operator overloading in some other paths).
     - When operator overloading is used, it should lend itself to relatively efficient native implementations, including
           - In the startup path, when code is run just a few times
           - Lends itself well to inline caching (for both monomorphic and polymorphic cases) to reduce any overhead of the dispatch
