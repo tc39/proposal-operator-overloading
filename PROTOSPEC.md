@@ -16,6 +16,7 @@ Each Operator Set record has the following fields, none of which are ever modifi
 | `[[SelfOperatorDefinition]]` | Operator Definition Table | Definition of unary operators, and binary operators with both operands being of this Operator Set |
 | `[[LeftOperatorDefinitions]]` | List of length `[[OperatorCounter]]` with elements either `~empty~` or binary Operator Defintion Table | Operator definitions for when this is the left operand, and something of a lower OperatorCounter is the right operand |
 | `[[RightOperatorDefinitions]]` | "" | "" but for the right operand |
+| `[[OpenOperators]]` | List of Strings representing operators | The set of operators that this type is open to having overloaded by a yet-to-be-defined type, as the other operand |
 
 Built-in Operator Sets exist for the built-in numeric primitive types: String, BigInt and Number. The phrase "the Operator Set of `x`" refers to `x.[[OperatorSet]]` if `x` is an object, and the built-in Operator Set for those four types, which describes the currently specified behavior.
 
@@ -93,7 +94,7 @@ For a binary operator which is not listed above (such as `*`, `/`, `<`) applied 
 
 ### Functional definition interface
 
-The `Operators` object (which could be exposed from a [built-in module](https://github.com/tc39/proposal-javascript-standard-library/)) can be called as a function. Like arrow functions, it is not constructable. It is passed a variable number of arguments. The first argument is translates into the `[[SelfOperatorDefinition]]`, while subsequent arguments are individual entries in the `[[LeftOperatorDefinitions]]` or `[[RightOperatorDefinitions]]` lists (based on any `left:` or `right:` property they have).
+The `Operators` object (which could be exposed from a [built-in module](https://github.com/tc39/proposal-javascript-standard-library/)) can be called as a function. Like arrow functions, it is not constructable. It is passed a variable number of arguments. The first argument is translates into the `[[SelfOperatorDefinition]]`, while subsequent arguments are individual entries in the `[[LeftOperatorDefinitions]]` or `[[RightOperatorDefinitions]]` lists (based on any `left:` or `right:` property they have). When defining operators which are operating between two different types, the `[[OpenOperators]]` field of that other operator set will be consulted.
 
 ### Decorator definition interface
 
@@ -105,10 +106,10 @@ The `Operators` object has two properties which are decorators:
     1. The finisher appends a tuple containing the method function and the other arguments to a List, which is "associated with" the class.
 - `Operators.overloaded`, a class decorator, which does the following:
     1. Add a finisher to do the following things:
-        1. Assert that the superclass is Operators (which will just throw if called as a super constructor)
-        1. Take the associated define list and munge it into the argument for the functional definition interface.
-        1. Call into the functional definition interface, and replace the superclass with the result of that call.
-        1. Prevent changing the superclass, e.g. through Object.preventExtensions.
+           1. Assert that the superclass is Operators (which will just throw if called as a super constructor)
+           1. Take the associated define list and munge it into the argument for the functional definition interface.
+           1. Call into the functional definition interface, and replace the superclass with the result of that call.
+           1. Prevent changing the superclass, e.g. through Object.preventExtensions.
 
 ### `with operators from` declarations
 
