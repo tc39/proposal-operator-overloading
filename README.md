@@ -15,9 +15,25 @@ JavaScript has a very restricted set of numeric types. Traditionally, it had jus
 This example, like many of the following ones, also uses the [extended numeric literals](https://github.com/tc39/proposal-extended-numeric-literals) proposal as well.
 
 ```js
+// Usage example
+import { Decimal, _m } from "./decimal.mjs";
+with operators from Decimal;  // Enable operator overloading for decimals
+
+1_m + 2_m     // ==> 3_m
+3_m * 2_m     // ==> 6_m
+1_m == 1_m    // ==> true
+1_m == 1      // ==> true
+1 == 1m       // ==> true
+1_m === 1     // ==> false (not overloadable)
+
+// -------------
+// decimal.mjs
+// Implementation of the type
+
 import Big from './big.mjs';  // https://github.com/MikeMcl/big.js/
 
 // Decorator-based API for operator overloading
+export
 @Operators.overloaded
 class Decimal extends Operators {
   #big;
@@ -40,17 +56,9 @@ class Decimal extends Operators {
 }
 
 // Definition in terms of extensible literals proposal
-function _m(obj) { return new Decimal(obj.string); }
-
-// Usage:
-with operators from Decimal;  // Enable operator overloading for decimals
-
-1_m + 2_m     // ==> 3_m
-3_m * 2_m     // ==> 6_m
-1_m == 1_m    // ==> true
-1_m == 1      // ==> true
-1 == 1m       // ==> true
-1_m === 1     // ==> false (not overloadable)
+export function _m(obj) {
+  return new Decimal(obj.string);
+}
 ```
 
 ### Matrix/vector computations
@@ -58,6 +66,16 @@ with operators from Decimal;  // Enable operator overloading for decimals
 JavaScript is increasingly used for data processing and analysis, with libraries like [stdlib](https://stdlib.io/). These calculations are made a bit more awkward because things involving vector, matrix and tensor calculations need to be done all via method chaining, rather than more naturally using operators as they can in many other programming languages. Operator overloading could provide that natural phrasing.
 
 ```js
+// Usage example
+import { Vector } from "./vector.mjs";
+with operators from Vector;
+
+new Vector([1, 2, 3]) + new Vector([4, 5, 6])   // ==> new Vector([5, 7, 9])
+3 * new Vector([1, 2, 3])                       // ==> new Vector([3, 6, 9])
+new Vector([1, 2, 3]) == new Vector([1, 2, 3])  // ==> true
+
+// ----------------
+// vector.mjs
 // This example uses the "Imperative API".
 // It would also be possible to write with the decorator-based API of the previous example.
 
@@ -76,7 +94,7 @@ const VectorOps = Operators({
   }
 });
 
-class Vector extends VectorOps {
+export class Vector extends VectorOps {
   contents;
   constructor(contents) {
     super();
@@ -84,13 +102,6 @@ class Vector extends VectorOps {
   }
 }
 Object.preventExtensions(Vector);  // ensure the operators don't change
-
-// Usage:
-with operators from Vector;
-
-new Vector([1, 2, 3]) + new Vector([4, 5, 6])   // ==> new Vector([5, 7, 9])
-3 * new Vector([1, 2, 3])                       // ==> new Vector([3, 6, 9])
-new Vector([1, 2, 3]) == new Vector([1, 2, 3])  // ==> true
 ```
 
 ### Equation DSLs
@@ -130,7 +141,7 @@ At this point, maybe you don't even need that comment!
 
 Tab Atkins [proposed](https://www.xanthir.com/b4UD0) that CSS support syntax in JavaScript for CSS unit literals and operators. The [CSS Typed OM](https://drafts.css-houdini.org/css-typed-om-1/) turned out a bit different, with ergonomic affordances but without using new types of literals or operator overloading. With this proposal, in conjunction with [extended numeric literals](https://github.com/tc39/proposal-extended-numeric-literals), we could have some more intuitive units calculations than the current function- and method-based solution.
 
-In this case, the CSSUnitValue platform objects would come with operator overloading already enabled. Their definition in the CSS Typed OM specification would, indirectly, make use of the same JavaScript mechanism that
+In this case, the CSSNumericValue platform objects would come with operator overloading already enabled. Their definition in the CSS Typed OM specification would, indirectly, make use of the same JavaScript mechanism that
 
 ```js
 with operators from CSSNumericValue;
@@ -147,108 +158,65 @@ document.querySelector("#element").style.paddingLeft = 3_em + 2_px;
     - Support operands of different types and the same type, as in the above examples.
     - Explain all of JS's behavior on existing types in terms of operator overloading.
     - Available in both strict and sloppy mode, with and without class syntax.
-- Performance/predicability
-    - Don't slow down code which doesn't take advantage of operator overloading.
+- Predicability
     - The meaning of operators on existing objects shouldn't be overridable
       or monkey-patchable, both for built-in types and for objects defined in
       other libraries.
     - It should not be possible to change the behavior of existing code
       using operators by unexpectedly passing it an object which overloads operators. (*If this is feasible.*)
     - Don't encourage a crazy coding style in the ecosystem.
+- Efficiently implementable
+    - In native implementations, don't slow down code which doesn't take advantage of operator overloading (both within a module that uses operator overloading in some other paths, and .
+    - When operator overloading is used, it should lend itself to relatively efficient native implementations, including
+          - In the startup path, when code is run just a few times
+          - Lends itself well to inline caching (for both monomorphic and polymorphic cases) to reduce any overhead of the dispatch
+          - Feasible to optimize in a JIT (for both monomorphic and polymorphic cases), with a minimal number of cheap hidden class checks, and without extremely complicated cases for when things become invalid
+          - Don't create too much complexity in the implementation to support such performance
+    - When enough type declarations are present, it should be feasible to implement efficiently in TypeScript, similarly to BigInt's implementation.
 - Operator overloading should be a way of 'explaining the language' and providing hooks into something that's already there, rather than adding something which is a very different pattern from built-in operator definitions.
 
-## Mechanism
+## Usage documentation
 
-The operator overloading proposal is based on creation of objects with an `[[OperatorSet]]` internal slot, which points to a spec-internal Operator Set record. The Operator Set controls the dispatch of operators. A functional and decorator-based interface exists to define Operator Sets (called `Operators` in JavaScript) and create objects that have operators dispatched according to them.
+This section includes high-level for how to use and define overloaded operators, targeted at JavaScript programmers potentially using the feature. For low-level spec-like text, see [PROTOSPEC.md](https://github.com/littledan/proposal-operator-overloading/blob/master/PROTOSPEC.md).
 
-### Operator Sets
+### Using operators
 
-The global counter OperatorCounter is used to assign an integer to each Operator Set.
+With this proposal, operators can be overloaded on certain JavaScript objects that declare themselves as having overloaded operators.
 
-An Operator Definitition Table is a table with values for each [numeric type operation](https://tc39.github.io/proposal-bigint/#table-numeric-type-ops), as enumerated in the BigInt specification, either JavaScript function objects or the `~empty~` sentinel value. A "binary Operator Definition Table" has `~empty~` as its value for each unary operation. Note that the sameValue and sameValueZero operations from that table are never invoked through operator overloading.
+The following operators may have overloaded behavior:
+- Mathematical operators: unary `+`, `-`, `++`, `--`; binary `+`, `-`, `*`, `/`, `%`, `**`
+- Bitwise operators: unary `~`; binary `&`, `^`, `|`, `<<`, `>>`, `>>>`
+- Comparison operators: `==`, `<`, `>`, `<=`, `>=`
 
-Each Operator Set record has the following fields, none of which are ever modified after the operator set is created:
+The definition of `>`, `<=` and `>=` is derived from `<`, and the definition of assigning operators like `+=` is derived  their corresponding binary operator, for example `+`.
 
-| Name | Type | Description |
-|------|------|-------------|
-| `[[OperatorCounter]]` | integer | Value of the OperatorCounter when this Operator Set was created |
-| `[[SelfOperatorDefinition]]` | Operator Definition Table | Definition of unary operators, and binary operators with both operands being of this Operator Set |
-| `[[LeftOperatorDefinitions]]` | List of length `[[OperatorCounter]]` with elements either `~empty~` or binary Operator Defintion Table | Operator definitions for when this is the left operand, and something of a lower OperatorCounter is the right operand |
-| `[[RightOperatorDefinitions]]` | "" | "" but for the right operand |
+The following operators do not support overloading:
+- `!`, `&&`, `||` (boolean operations--always does ToBoolean first, and then works with the boolean)
+- `===` and the built-in SameVale and SameValueZero operations (always uses the built-in strict equality definition)
+- `.` and `[]` (these are property access; use Proxy to overload)
+- `()` (calling a function--use a Proxy to overload)
+- `,` (just returns the right operand)
+- With future proposals, `|>`, `?.`, `?.[`, `?.(`, `??` (based on function calls, property access, and checks against the specific null/undefined values, so similar to the above)
 
-Built-in Operator Sets exist for the built-in numeric primitive types: String, BigInt and Number. The phrase "the Operator Set of `x`" refers to `x.[[OperatorSet]]` if `x` is an object, and the built-in Operator Set for those four types, which describes the currently specified behavior.
+To use operator overloading, import a module that exports a class, and enable operators on it using a `with operators from` declaration.
 
-Note, String overloading only supports the +, == and < operators, and not the other "numeric" operators. Boolean and Symbol may not have operators overloaded on them.
+#### `with operators from` declarations
 
-### Operator usage semantics
+Operator overloading is only enabled for the classes that you specifically opt in to. To do this overloading, use a `with operators from` declaration, follwed by a comma-separated list of classes that overload operators that you want to enable.
 
-A few operators are special, and the rest follow a pattern.
+For example, if you have two classes, `Vector` and `Scalar`, which support overloaded operators, you can
 
-#### Shared algorithms
+```js
+import { Vector, Scalar } from "./module.mjs";
 
-The operation ToOperand(arg [, hint]) does the following:
-1. If arg is an Object with an `[[OperatorSet]]` internal slot,
-    1. If the operator set of arg is not in the allowed set of operators, which had a `with operators from` declaration, based on the lexical scope, throw a TypeError.
-    1. Otherwise, return arg.
-1. Otherwise, return ToPrimitive(arg [, hint]).
+new Vector([1, 2, 3]) * new Scalar(3);  // TypeError: operator overloading on Vector and Scalar is not enabled
 
-DispatchBinaryOperator(operator, a, b):
-1. If the operator set of a and b are the same,
-    1. If the common operator set does not have a definition for the operator in its `[[SelfOperatorDefinition]]` table, throw a TypeError.
-    1. Otherwise, apply the definition to the arguments and return the result.
-1. Otherwise, if a's operator set has a lower `[[OperatorCounter]]` than b's operator set,
-    1. Find the relevant operator definition table in the b.`[[OperatorSet]]`.`[[OperatorCounter]]`'th element of a.`[[OperatorSet]]`.`[[RightOperatorDefinitions]]`.
-    1. If the operator is `~empty~` in that operator definition table, throw a TypeError.
-    1. Otherwise, apply the operator to the arguments using the operator table.
-1. Otherwise, b's operator set has a lower `[[OperatorCounter]]` than a's operator set,
-    1. Perform the instructions for the corresponding case, but referencing the `[[LeftOperatorDefinitions]]` instead of `[[RightOperatorDefinitions]]`.
+with operators from Vector, Scalar;
 
-DispatchUnaryOperator(operator, arg):
-1. If the Operator Set of value doesn't have a definition for the operator, throw a TypeError.
-1. Otherwise, call the operator on value and return the result.
+new Vector([1, 2, 3]) * new Scalar(3);  // Works, returning new Vector([3, 6, 9])
+````
 
-#### Special operators
-
-The definition of `+`(a, b):
-1. Set a to ToOperand(a).
-1. Set b to ToOperand(b).
-1. If Type(a) is String or Type(b) is String,
-    1. Return the string-concatenation of ToString(a) and ToString(b).
-1. Return DispatchBinaryOperator(a, b).
-
-The definition of `==`(x, y):
-1. If Type(x) is the same as Type(y), and neither x nor y are Objects with an `[[OperatorSet]]` internal slot, then
-    1. Return the result of performing Strict Equality Comparison x === y.
-1. If x is null and y is undefined, return true.
-1. If x is undefined and y is null, return true.
-1. If Type(x) is Boolean, return the result of the comparison ToNumber(x) == y.
-1. If Type(y) is Boolean, return the result of the comparison x == ToNumber(y).
-1. If Type(x) is Object and x does not have an [[OperatorSet]] internal slot, set x to ToPrimitive(x).
-1. If Type(y) is Object and y does not have an [[OperatorSet]] internal slot, set y to ToPrimitive(y).
-1. Return DispatchBinaryOperator(a, b).
-
-The definition of [Abstract Relational Comparison](https://tc39.github.io/ecma262/#sec-abstract-relational-comparison), which ends up defining <, <=, >, >=:
-1. Set a to ToOperand(a, hint Number), and set b to ToOperand(b, hint Number), in the order driven by their order in code.
-1. If a and b are both strings, follow the current logic for comparing two strings.
-1. Otherwise, follow the remaining steps for an ordinary overloaded binary operator, given a and b, using the common lessThan operator for the operation.
-
-Note that String can only be overloaded for the above operators, and cannot be usefully overloaded for the below "numerical" operators.
-
-#### Numerical operators
-
-The operation ToNumericOperand(arg) is used in the following definitions:
-1. If Type(arg) is Number or Type(arg) is BigInt, return arg.
-1. If Type(arg) is Object and arg has a `[[OperatorSet]]` internal slot, return ToOperand(arg).  NOTE: The ToOperand call is just to check whether it was declared as `with operators from`.
-1. Return ToNumeric(arg).  NOTE: This step may only convert to one of the built-in numeric types; value types may define more.
-
-For a unary operator (such as unary `-`, `++`, `--`, `~`) applied to `arg`:
-1. Let value be ToNumericOperand(arg).
-1. Return DispatchUnaryOperator(operator, arg).
-
-For a binary operator which is not listed above (such as `*`, `/`, `<`) applied to `a` and `b`:
-1. Set a to ToNumericOperand(a).
-1. Set b to ToNumericOperand(b).
-1. Return DispatchBinaryOperator(operator, a, b).
+The scope of enabling operators is based on JavaScript blocks (e.g., you can enable operators within a specific function, rather than globally). By default, built-in types like `String`, `Number` and `BigInt` already have operators enabled.
 
 ### Functional definition interface
 
@@ -259,27 +227,8 @@ The `Operators` object (which could be exposed from a [built-in module](https://
 The decorator interface provides convenient syntactic sugar over the functional interface above.
 
 The `Operators` object has two properties which are decorators:
-- `Operators.define`, a method decorator, which does the following:
-    1. Returns the method as is, adding a finisher which closes over the method and the arguments to the decorator.
-    1. The finisher appends a tuple containing the method function and the other arguments to a List, which is "associated with" the class.
-- `Operators.overloaded`, a class decorator, which does the following:
-    1. Add a finisher to do the following things:
-        1. Assert that the superclass is Operators (which will just throw if called as a super constructor)
-        1. Take the associated define list and munge it into the argument for the functional definition interface.
-        1. Call into the functional definition interface, and replace the superclass with the result of that call.
-        1. Prevent changing the superclass, e.g. through Object.preventExtensions.
-
-### `with operators from` declarations
-
-The purpose of these declarations is to meet this goal:
-
-> It should not be possible to change the behavior of existing code using operators by unexpectedly passing it an object which overloads operators. 
-
-The idea of these declarations is, within a particular chunk of code, only explicitly enabled operator overloads should be used. The `with operators from` declaration specifically enables certain types for overloading, leaving the rest prohibited.
-
-When such a declaration is reached, the argument `arg` has Get(arg, `Operators.operators`) applied, to get the related Operators instance, and then the `[[OperatorSetDefinition]]` internal slot of that is read. If that doesn't exist, a TypeError is thrown. If it does, then the relevant operator set is added to the lexical scope for permitted use.
-
-It's not clear whether the performance (see below) or ergonomics impact will outweigh the predictability/security benefits of this check; more thought and discussion is needed.
+- `Operators.define`, a method decorator
+- `Operators.overloaded`, a class decorator
 
 ### Implementation notes
 
@@ -341,7 +290,7 @@ This proposal has opted against using something like Slate's Prototype Multiple 
 
 If you have operators defined in two different modules, then to define overloads between them, import one module from the other, and don't make a circularity between the two. If you do this, the loading order wil lbe determinstic. The one that imports the other one is responsible for defining the overloads between the two types.
 
-### How does this relate to other proposals?
+### How does operator overloading relate to other proposals?
 
 #### BigInt
 
@@ -358,3 +307,13 @@ When these proposals mature more, it will be good to look into how operator over
 #### Extended numeric literals
 
 The [extended numeric literals](https://github.com/tc39/proposal-extended-numeric-literals) proposal allows numeric-like types such as `3_px` or `5.2_m` to be defined and used ergonomically.  Extended numeric literals and operator overloading fit well together, as the examples in this README show, but they don't depend on each other and can each be used separately.
+
+### How does operator overloading interact with Proxy and membrane systems?
+
+In this proposal, operators remain *not* operations visible in the meta-object protocol. Objects with overloaded operators don't even undergo the typical object coercion. However, this proposal still attempts to mesh well with membrane systems.
+
+All operator-overloaded values are objects, so any technique that's used to create or access them can be mediated by membrane wrapping. The value returned from the membrane can be overloaded in a separate, membrane-mediated way, assuming collaboration between the overloaded object and the membrane system (otherwise there's no introspection API to see which operators to overload).
+
+A membrane system which runs early in the program's execution (like the freeze-the-world systems) can monkey-patch and replace the `Operators` object to provide this collaboration; therefore, there is no need for any particular additional hooks. At a minimum, even without replacing the `Operators` object, the membrane can deny use of overloaded operators for the object on the other side of the membrane.
+
+`with operator from` declarations provide a further defense: Those declarations prove that the piece of the program has access to (a piece of) the class defining overloaded operators. This works because the lookup of the internal slot `[[OperatorSetDefinition]]` does is not transparent to Proxies. A membrane system can deny access to that original operator set, and instead replace it with a separate class which overloads operators in a membrane-mediated way. In this way, even if an overloaded value "leaks", the right to call its operators is controlled by the class, which forms a capability object.
