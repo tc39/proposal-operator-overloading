@@ -43,7 +43,7 @@ class Decimal extends Operators {
   #plus(a, b) { return a.#big.plus(b.#big); }
 
   @Operators.define("*")
-  #plus(a, b) { return a.#big.times(b.#big); }
+  #times(a, b) { return a.#big.times(b.#big); }
 
   @Operators.define("==")
   #decimalEqualsDecimal(a, b) { return a.#big.eq(b.#big); }
