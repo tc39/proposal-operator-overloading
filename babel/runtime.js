@@ -49,7 +49,7 @@ if (typeof BigInt !== "undefined") {
   BigInt[OperatorDefinition] =
       BigInt.prototype[OperatorSet] = {
     OperatorCounter: 1,
-    SelfOperatorDefinition: identityOperators
+    SelfOperatorDefinition: identityOperators,
     LeftOperatorDefinitions: [identityOperators],
     RightOperatorDefinitions: [identityOperators],
     OpenOperators: binaryOperatorSet,
@@ -59,7 +59,7 @@ if (typeof BigInt !== "undefined") {
 String[OperatorDefinition] =
     String.prototype[OperatorSet] = {
   OperatorCounter: 2,
-  SelfOperatorDefinition: identityOperators
+  SelfOperatorDefinition: identityOperators,
   LeftOperatorDefinitions: [identityOperators, identityOperators],
   RightOperatorDefinitions: [identityOperators, identityOperators],
   OpenOperators: ["+", "==", "<"],
@@ -158,7 +158,7 @@ function IsBadIndex(n) {
 export function Operators(table, ...tables) {
   const counter = OperatorCounter++;
 
-  const table = cleanTable(table);
+  table = cleanTable(table);
   const {left, right} = partititionTables(tables);
   const open = makeOpenSet(table.open);
   
@@ -452,7 +452,7 @@ export function _abstractRelationalComparison(operator, a, b, operatorSet) {
       swap = false;
       not = false;
       break;
-    case ">:
+    case ">":
       swap = true;
       not = false;
       break;
