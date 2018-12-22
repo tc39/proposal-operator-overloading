@@ -104,6 +104,7 @@ export class Vector extends VectorOps {
     super();
     this.contents = contents;
   }
+  get length() { return this.contents.length; }
 }
 Object.preventExtensions(Vector);  // ensure the operators don't change
 ```
