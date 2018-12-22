@@ -73,6 +73,7 @@ with operators from Vector;
 new Vector([1, 2, 3]) + new Vector([4, 5, 6])   // ==> new Vector([5, 7, 9])
 3 * new Vector([1, 2, 3])                       // ==> new Vector([3, 6, 9])
 new Vector([1, 2, 3]) == new Vector([1, 2, 3])  // ==> true
+(new Vector([1, 2, 3]))[1]                      // ==> 2
 
 // ----------------
 // vector.mjs
@@ -86,6 +87,9 @@ const VectorOps = Operators({
   "=="(a, b) {
     return a.contents.length === b.contents.length &&
            a.contents.every((elt, i) => elt == b.contents[i]);
+  },
+  "[]"(a, b) {
+    return a.contents[b];
   }
 }, {
   left: Number,
@@ -200,6 +204,7 @@ The following operators may have overloaded behavior:
 - Mathematical operators: unary `+`, `-`, `++`, `--`; binary `+`, `-`, `*`, `/`, `%`, `**`
 - Bitwise operators: unary `~`; binary `&`, `^`, `|`, `<<`, `>>`, `>>>`
 - Comparison operators: `==`, `<`, `>`, `<=`, `>=`
+- Integer-indexed property access: `[]`, `[]=`
 
 The definition of `>`, `<=` and `>=` is derived from `<`, and the definition of assigning operators like `+=` is derived  their corresponding binary operator, for example `+`.
 
@@ -283,9 +288,25 @@ For a detailed investigation, see [LANGCOMP.md](https://github.com/littledan/pro
 - It's a pretty popular design choice to conservatively support overloading only on some operators, and to define some in terms of others, as this proposal does. User-defined operators have been difficult to varying extents in other programming languages.
 - The way this proposal dispatches on the two operands is somewhat novel, most similar to Matlab. Unfortunately, of the established, popular mechanisms meet the design goals articulated in this document.
 
-### Can this work with subclasses, as a mixin?
+### Can this work with subclasses, rather than only defining overloading on base classes?
 
-That would be equivalent to giving overloading behavior to existing objects (since an instance is never "done initializing"). Let's avoid that.
+That would be equivalent to giving overloading behavior to existing objects. For example, the following code would add operator overloading behvior to an unsuspecting object if we permitted operator overloading to be triggered by a decorator on a class that inherited from any other class, rather than just inheriting from `Operators`:
+
+```js
+function addOverloads(obj) {
+  class SuperClass { constructor() { return obj; } }
+  @Operators.overloaded
+  class SubClass extends SuperClass {
+    @Operators.define("+")
+    #add(a, b) { /* ... */ }
+  }
+  new SubClass(obj);
+  return obj;
+}
+```
+The reason that this would modify the existing instance is that `SubClass` would put operator overloading behavior on whatever is returned from the super constructor, and that super constructor returns the existing object! Even if you don't use `with operators from`, there is suddenly different behavior when using operators on the object (throwing exceptions).
+
+Let's avoid this level of dynamic-ness, and make the language more predictable by keeping it a static, unchange-able property of an object whether it overloads operators or not.
 
 ### Can't we allow monkey-patching, for mocking, etc?
 
@@ -354,3 +375,12 @@ All operator-overloaded values are objects, so any technique that's used to crea
 A membrane system which runs early in the program's execution (like the freeze-the-world systems) can monkey-patch and replace the `Operators` object to provide this collaboration; therefore, there is no need for any particular additional hooks. At a minimum, even without replacing the `Operators` object, the membrane can deny use of overloaded operators for the object on the other side of the membrane.
 
 `with operator from` declarations provide a further defense: Those declarations prove that the piece of the program has access to (a piece of) the class defining overloaded operators. This works because the lookup of the internal slot `[[OperatorSetDefinition]]` does is not transparent to Proxies. A membrane system can deny access to that original operator set, and instead replace it with a separate class which overloads operators in a membrane-mediated way. In this way, even if an overloaded value "leaks", the right to call its operators is controlled by the class, which forms a capability object.
+
+### Why does this include `[]`, which isn't an operator but rather property access?
+
+ES6 introduced Proxy, which lets developers define custom semantics for property access. Unfortunately, this capability has certain issues:
+- It's not possible to use both Proxy and the mechanism in this repository together, since operator overloading doesn't forward through Proxy.
+- Proxy has proven difficult to optimize in JS engines, in part due to how general the interface is. The proposal for overloading `[]` is much more restricted in its power, potentially making it more optimizable.
+- From the perspective of many JavaScript developers and even library authors, it's an "implementation detail" that array index access is based on JavaScript property access; for them, overloading this way is consistent with their mental model.
+
+The overloading of `[]` proposed here is based on the semantics of Integer Indexed Exotic Objects, and doesn't add or change anything about JavaScript's meta-object protocol.
