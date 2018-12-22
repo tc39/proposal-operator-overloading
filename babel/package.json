@@ -4,8 +4,8 @@
   "description": "Babel transform and runtime support for an operator overloading proposal",
   "main": "runtime.js",
   "scripts": {
-    "test": "jest",
-    "build": "./node_modules/.bin/babel runtime.js -d build"
+    "test": "jasmine",
+    "build": "babel runtime.js -d build"
   },
   "repository": {
     "type": "git",
@@ -26,6 +26,6 @@
     "@babel/cli": "^7.2.3",
     "@babel/core": "^7.2.2",
     "@babel/preset-env": "^7.2.2",
-    "jest": "^23.6.0"
+    "jasmine": "^3.3.1"
   }
 }

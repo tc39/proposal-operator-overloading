@@ -415,7 +415,7 @@ function ToPrimitive(x) {
 
 function ToOperand(x) {
   if (hasOverloadedOperators(x)) return x;
-  return ToPrimtive(x);
+  return ToPrimitive(x);
 }
 
 // ==
