@@ -162,13 +162,61 @@ export function Operators(table, ...tables) {
   return Overloaded;
 }
 
-Operators.define = function() {
-  
-};
+// klass => Array of {operator, definition, options}
+const decoratorOperators = new WeakMap();
+
+function OperatorsOverloaded(descriptor, open) {
+  // This algorithm doesn't contain enough validation
+  // (of options and open) and is too inefficient
+  descriptor.finisher = klass => {
+    const args = [{...open}];
+    const operators = decoratorOperators.get(klass);
+    if (operators === undefined) throw new TypeError("No operators overloaded");
+    decoratorOperators.delete(klass);
+    // Gratuitiously inefficient algorithm follows
+    for (const {operator, definition, options} of operators) {
+      if (options === undefined) {
+        args[0][operator] = definition;
+      } else {
+        let obj = args.find(entry =>
+            entry.right === options.right || entry.left === options.left);
+        if (!obj) {
+          obj = {...options};
+          args.push(obj);
+        }
+        obj[operator] = definition;
+      }
+    }
+    // get operators and process them into args
+    const superclass = Operators(...args);
+    Object.setPrototypeOf(klass, superclass);
+    Object.setPrototypeOf(klass.prototype, superclass.prototype);
+  }
+}
 
 Operators.overloaded = function(arg) {
-  arg.finisher = klass => {
-  };
+  if (arg[Symbol.toStringTag] === "Descriptor") {
+    return OperatorsOverloaded(arg);
+  } else {
+    return descriptor => OperatorsOverloaded(descriptor, arg);
+  }
+};
+
+Operators.define = function(operator, options) {
+  return function(descriptor) {
+    if (descriptor.kind !== "method") {
+      throw new TypeError("@Operator.define must be used on a method");
+    }
+    const definition = descriptor.descriptor.value;
+    descriptor.finisher = klass => {
+      let operators = decoratorOperators.get(klass);
+      if (operators === undefined) {
+        operators = [];
+        decoratorOperators.set(klass, operators);
+      }
+      operators.push({operator, definition, options});
+    };
+  }
 };
 
 const defaultOperators = [0, 1, 2];
