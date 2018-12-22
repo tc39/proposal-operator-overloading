@@ -137,6 +137,24 @@ function makeOpenSet(open) {
   return new Set(open);
 }
 
+function CanonicalNumericIndexString(key) {
+  if (typeof key !== "string") return undefined;
+  if (key === "-0") return -0;
+  const n = Number(key);
+  if (String(n) !== key) return undefined;
+  return n;
+}
+
+function IsInteger(n) {
+  if (typeof n !== "number") return false;
+  if (Object.is(n, NaN) || n === Infinity || n === -Infinity) return false;
+  return Math.floor(Math.abs(n)) === Math.abs(n);
+}
+
+function IsBadIndex(n) {
+  return !IsInteger(n) || n < 0 || Object.is(n, -0);
+}
+
 export function Operators(table, ...tables) {
   const counter = OperatorCounter++;
 
@@ -152,11 +170,75 @@ export function Operators(table, ...tables) {
     OpenOperators: open,
   };
 
-  class Overloaded {
-    constructor() {
-      this[OperatorSet] = set;
+  let Overloaded;
+  if ("[]" in table || "[]=" in table) {
+    Overloaded = class {
+      constructor() {
+        const sentinel = Symbol();
+        function get(target, key) {
+          const n = CanonicalNumericIndexString(key);
+          if (n === undefined) return Reflect.getOwnPropertyDescriptor(target, key, proxy);
+          if (IsBadIndex(n)) return sentinel;
+          const length = Number(proxy.length);
+          if (n >= length) return sentinel;
+          let value = table["[]"](proxy, n);
+          return value;
+        }
+        // Unfortunately, we have to close over proxy to invoke Get("length"),
+        // so that the receiver will be accurate (e.g., in case it uses private)
+        const proxy = new Proxy({ [OperatorSet]: set }, {
+          getOwnPropertyDescriptor(target, key) {
+            let value = get(target, key);
+            if (value === sentinel) return undefined;
+            return { value, writable: true, enumerable: true, configurable: false };
+          },
+          has(target, key) {
+            const n = CanonicalNumericIndexString(key);
+            if (n === undefined) return Reflect.get(target, key, proxy);
+            if (IsBadIndex(n)) return false;
+            const length = Number(proxy.length);
+            return n < length;
+          },
+          defineProperty(target, key, desc) {
+            const n = CanonicalNumericIndexString(key);
+            if (n === undefined) return Reflect.defineProperty(target, key, desc, proxy);
+            if (IsBadIndex(n)) return false;
+            if (desc.writable === false ||
+                desc.enumerable === false ||
+                desc.configurable === true) return false;
+            table["[]="](proxy, n, desc.value);
+            return true;
+          },
+          get(target, key) {
+            let value = get(target, key);
+            if (value === sentinel) return undefined;
+            return value;
+          },
+          set(target, key, value) {
+            const n = CanonicalNumericIndexString(key);
+            if (n === undefined) return Reflect.defineProperty(target, key, desc, proxy);
+            if (IsBadIndex(n)) return false;
+            table["[]="](proxy, n, value);
+            return true;
+          },
+          ownKeys(target) {
+            const length = Number(proxy.length);
+            const keys = [];
+            for (let i = 0; i < length; i++) keys.push[i];
+            keys.concat(Reflect.ownKeys(target));
+            return keys;
+          },
+        });
+        return new Proxy({ [OperatorSet]: set }, indexHandler);
+      }
     }
-  };
+  } else {
+    Overloaded = class {
+      constructor() {
+        this[OperatorSet] = set;
+      }
+    };
+  }
   Overloaded[OperatorDefinition] = set;
   
   return Overloaded;
