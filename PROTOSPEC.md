@@ -97,8 +97,9 @@ For a binary operator which is not listed above (such as `*`, `/`, `<`) applied 
 If the `[[SelfOperatorDefinition]]` record contains a definition for `[]` or `[]=`, then the constructor creates an exotic object, with semantics similar to TypedArrays' [Integer-Indexed Exotic Objects](https://tc39.github.io/ecma262/#sec-integer-indexed-exotic-objects), with the following substitutions:
 - Calls out to the `[]` function replace IntegerIndexedElementGet
 - Calls to the `[]=` function replace IntegerIndexedElementSet
-- Get of the `length` property replaces reads of `[[ArrayLength]]`
+- Get of the `length` property replaces reads of `[[ArrayLength]]` (only used in HasProperty)
 - For HasProperty, the detached check is omitted (this means that TypedArrays can't be perfectly emulated)
+- In DefineOwnProperty, the length check is skipped (to be handled by `[]=`)
 
 If neither `[]` nor `[]=` are overloaded, then an ordinary object is created.
 
