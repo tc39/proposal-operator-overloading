@@ -213,6 +213,7 @@ describe('[] overloading', () => {
 
   class Vector extends Ops {
     constructor(contents) { super(); this.contents = contents; }
+    get length() { return this.contents.length; }
   }
 
 
@@ -222,5 +223,73 @@ describe('[] overloading', () => {
     expect(vec[1]).toBe(2);
     expect(vec[2]).toBe(3);
     expect(vec[3]).toBe(undefined);
+    expect(vec[-1]).toBe(undefined);
+    expect(vec[.5]).toBe(undefined);
+    expect(vec.contents[1]).toBe(2);
+    expect(vec["-0"]).toBe(undefined);
+    expect(vec.length).toBe(3);
+    expect(Object.getPrototypeOf(vec)).toBe(Vector.prototype);
+  });
+
+  it('Vector[Number] = value access works', () => {
+    'use strict';
+    const vec = new Vector([1, 2, 3]);
+    expect(vec[0]).toBe(1);
+    expect(vec[0] = 5).toBe(5);
+    expect(vec[0]).toBe(5);
+
+    expect(vec[1]).toBe(2);
+    expect(vec[1] = 20).toBe(20);
+    expect(vec[1]).toBe(20);
+
+    expect(vec[5]).toBe(undefined);
+    expect(vec[5] = 25).toBe(25);
+    expect(vec[5]).toBe(25);
+
+    expect(vec[.5]).toBe(undefined);
+    expect(() => vec[.5] = 25).toThrowError(TypeError);
+    expect(vec[.5]).toBe(undefined);
+
+    expect(vec[-1]).toBe(undefined);
+    expect(() => vec[-1] = 25).toThrowError(TypeError);
+    expect(vec[-1]).toBe(undefined);
+
+    expect(vec["-0"]).toBe(undefined);
+    expect(() => vec["-0"] = 25).toThrowError(TypeError);
+    expect(vec["-0"]).toBe(undefined);
+  });
+
+  it('in works', () => {
+    const vec = new Vector([1, 2, 3]);
+    expect(0 in vec).toBe(true);
+    expect(1 in vec).toBe(true);
+    expect(2 in vec).toBe(true);
+    expect("0" in vec).toBe(true);
+    expect("1" in vec).toBe(true);
+    expect("2" in vec).toBe(true);
+    expect("contents" in vec).toBe(true);
+
+    expect(-1 in vec).toBe(false);
+    expect(.5 in vec).toBe(false);
+    expect("-0" in vec).toBe(false);
+    expect(3 in vec).toBe(false);
+  });
+
+  it('keys works', () => {
+    const vec = new Vector([1, 2, 3]);
+    expect(Object.getOwnPropertyNames(vec)).toEqual(["0", "1", "2", "contents"]);
+  });
+
+  it('defineOwnProperty and getOwnProperty work', () => {
+    const vec = new Vector([1, 2, 3]);
+    Object.defineProperty(vec, "3", { value: 5, writable: true, enumerable: true, configurable: false });
+    expect(Object.getOwnPropertyDescriptor(vec, "3")).toEqual({ value: 5, writable: true, enumerable: true, configurable: false });
+    Object.defineProperty(vec, "foobar", { value: 5, writable: false, enumerable: false, configurable: false });
+    expect(Object.getOwnPropertyDescriptor(vec, "foobar")).toEqual({ value: 5, writable: false, enumerable: false, configurable: false });
+    expect(() => Object.defineProperty(vec, "2", { writable: false, enumerable: true, configurable: false, value: 1 })).toThrowError(TypeError);
+    expect(() => Object.defineProperty(vec, "2", { writable: true, enumerable: false, configurable: false, value: 1 })).toThrowError(TypeError);
+    expect(() => Object.defineProperty(vec, "2", { writable: true, enumerable: true, configurable: true, value: 1 })).toThrowError(TypeError);
+    Object.defineProperty(vec, "2", { writable: true, enumerable: true, configurable: false, value: 1 })
+    expect(vec[2]).toBe(1);
   });
 });

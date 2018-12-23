@@ -214,19 +214,9 @@ export function Operators(table, ...tables) {
   if ('[]' in table || '[]=' in table) {
     Overloaded = class {
       constructor() {
-        const sentinel = Symbol();
-        function get(target, key) {
-          const n = CanonicalNumericIndexString(key);
-          if (n === undefined) return Reflect.getOwnPropertyDescriptor(target, key, proxy);
-          if (IsBadIndex(n)) return sentinel;
-          const length = Number(proxy.length);
-          if (n >= length) return sentinel;
-          const value = table['[]'](proxy, n);
-          return value;
-        }
         // Unfortunately, we have to close over proxy to invoke Get("length"),
         // so that the receiver will be accurate (e.g., in case it uses private)
-        const proxy = new Proxy({[OperatorSet]: set}, {
+        const proxy = new Proxy({__proto__: new.target.prototype, [OperatorSet]: set}, {
           getOwnPropertyDescriptor(target, key) {
             const n = CanonicalNumericIndexString(key);
             if (n === undefined) return Reflect.getOwnPropertyDescriptor(target, key, proxy);
@@ -238,7 +228,7 @@ export function Operators(table, ...tables) {
           },
           has(target, key) {
             const n = CanonicalNumericIndexString(key);
-            if (n === undefined) return Reflect.get(target, key, proxy);
+            if (n === undefined) return Reflect.has(target, key, proxy);
             if (IsBadIndex(n)) return false;
             const length = Number(proxy.length);
             return n < length;
@@ -251,6 +241,7 @@ export function Operators(table, ...tables) {
                 desc.enumerable === false ||
                 desc.configurable === true) return false;
             table['[]='](proxy, n, desc.value);
+            Reflect.defineProperty(target, key, desc, proxy); // Necessary for integrity checks
             return true;
           },
           get(target, key) {
@@ -271,9 +262,9 @@ export function Operators(table, ...tables) {
           },
           ownKeys(target) {
             const length = Number(proxy.length);
-            const keys = [];
-            for (let i = 0; i < length; i++) keys.push[i];
-            keys.concat(Reflect.ownKeys(target));
+            let keys = [];
+            for (let i = 0; i < length; i++) keys.push(String(i));
+            keys = keys.concat(Reflect.ownKeys(target, proxy));
             return keys;
           },
         });
