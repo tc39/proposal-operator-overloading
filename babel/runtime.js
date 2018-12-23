@@ -9,7 +9,7 @@ const binaryOperators = ['-', '*', '/', '%', '**', '&', '^', '|', '<<', '>>', '>
 const binaryOperatorSet = new Set(binaryOperators);
 const unaryOperators = ['pos', 'neg', '++', '--', '~'];
 const unaryOperatorSet = new Set(unaryOperators);
-const allOperators = binaryOperators.concat(unaryOperators);
+const allOperators = binaryOperators.concat(unaryOperators, ['[]', '[]=']);
 const operatorSet = new Set(allOperators);
 
 // To implement operators on built-in types, back them by
@@ -141,9 +141,11 @@ function partitionTables(tables) {
               `the operator ${key} may not be overloaded on the provided type`);
         }
       }
-      left[leftSet.OperatorCounter] = table;
+      // "Backwards" because this new operator type is on the right
+      // and the other argument is on the left
+      right[leftSet.OperatorCounter] = table;
     } else {
-      if (typeof rightType !== 'undefined') {
+      if (typeof rightType === 'undefined') {
         throw new TypeError('Either left: or right: must be provided');
       }
       const rightSet = rightType[OperatorDefinition];
@@ -157,7 +159,7 @@ function partitionTables(tables) {
               `the operator ${key} may not be overloaded on the provided type`);
         }
       }
-      right[rightSet.OperatorCounter] = table;
+      left[rightSet.OperatorCounter] = table;
     }
   }
   return {left, right};
@@ -226,8 +228,12 @@ export function Operators(table, ...tables) {
         // so that the receiver will be accurate (e.g., in case it uses private)
         const proxy = new Proxy({[OperatorSet]: set}, {
           getOwnPropertyDescriptor(target, key) {
-            const value = get(target, key);
-            if (value === sentinel) return undefined;
+            const n = CanonicalNumericIndexString(key);
+            if (n === undefined) return Reflect.getOwnPropertyDescriptor(target, key, proxy);
+            if (IsBadIndex(n)) return undefined;
+            const length = Number(proxy.length);
+            if (n >= length) return undefined;
+            const value = table['[]'](proxy, n);
             return {value, writable: true, enumerable: true, configurable: false};
           },
           has(target, key) {
@@ -248,13 +254,17 @@ export function Operators(table, ...tables) {
             return true;
           },
           get(target, key) {
-            const value = get(target, key);
-            if (value === sentinel) return undefined;
+            const n = CanonicalNumericIndexString(key);
+            if (n === undefined) return Reflect.get(target, key, proxy);
+            if (IsBadIndex(n)) return undefined;
+            const length = Number(proxy.length);
+            if (n >= length) return undefined;
+            const value = table['[]'](proxy, n);
             return value;
           },
           set(target, key, value) {
             const n = CanonicalNumericIndexString(key);
-            if (n === undefined) return Reflect.defineProperty(target, key, desc, proxy);
+            if (n === undefined) return Reflect.set(target, key, value, proxy);
             if (IsBadIndex(n)) return false;
             table['[]='](proxy, n, value);
             return true;
@@ -267,7 +277,7 @@ export function Operators(table, ...tables) {
             return keys;
           },
         });
-        return new Proxy({[OperatorSet]: set}, indexHandler);
+        return proxy;
       }
     };
   } else {
@@ -402,7 +412,7 @@ function dispatchBinaryOperator(operator, a, b, operatorSet) {
       definitions = b[OperatorSet].RightOperatorDefinitions[
           a[OperatorSet].OperatorCounter];
     } else {
-      definitions = a[OperatorSet].RightOperatorDefinitions[
+      definitions = a[OperatorSet].LeftOperatorDefinitions[
           b[OperatorSet].OperatorCounter];
     }
     if (typeof definitions !== 'object') {

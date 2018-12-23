@@ -143,7 +143,7 @@ describe('simple overloading', () => {
   });
 });
 
-describe('overloading with interoperation', () => {
+describe('overloading on the right', () => {
 
   const Ops = runtime.Operators({ }, { left: Number,
     '*'(a, b) {
@@ -165,10 +165,62 @@ describe('overloading with interoperation', () => {
   it('Number*Vector is permitted, other combinations banned', () => {
     const operators = runtime._declareOperators();
     runtime._withOperatorsFrom(operators, Vector);
-    // The following line fails
     expect(runtime._numericBinaryOperate('*', 2, vec, operators).contents[2]).toBe(6);
     expect(() => runtime._numericBinaryOperate('*', vec, vec, operators)).toThrowError(TypeError);
     expect(() => runtime._numericBinaryOperate('*', vec, 2, operators)).toThrowError(TypeError);
     expect(runtime._numericBinaryOperate('*', 2, 2, operators)).toBe(4);
+  });
+});
+
+describe('overloading on the left', () => {
+
+  const Ops = runtime.Operators({ }, { right: Number,
+    '*'(a, b) {
+      return new Vector(a.contents.map(elt => b * elt));
+    }
+  });
+
+  class Vector extends Ops {
+    constructor(contents) { super(); this.contents = contents; }
+  }
+
+  const vec = new Vector([1, 2, 3]);
+
+  it('* throws when not in operator set', () => {
+    const operators = runtime._declareOperators();
+    expect(() => runtime._numericBinaryOperate('*', 2, vec, operators)).toThrowError(TypeError);
+  });
+
+  it('Number*Vector is permitted, other combinations banned', () => {
+    const operators = runtime._declareOperators();
+    runtime._withOperatorsFrom(operators, Vector);
+    expect(() => runtime._numericBinaryOperate('*', 2, vec, operators)).toThrowError(TypeError);
+    expect(() => runtime._numericBinaryOperate('*', vec, vec, operators)).toThrowError(TypeError);
+    expect(runtime._numericBinaryOperate('*', vec, 2, operators).contents[2]).toBe(6);
+    expect(runtime._numericBinaryOperate('*', 2, 2, operators)).toBe(4);
+  });
+});
+
+describe('[] overloading', () => {
+  const Ops = runtime.Operators({
+    '[]'(a, b) {
+      return a.contents[b];
+    },
+    '[]='(a, b, c) {
+      a.contents[b] = c;
+    }
+  });
+
+  class Vector extends Ops {
+    constructor(contents) { super(); this.contents = contents; }
+  }
+
+
+  it('Vector[Number] access works', () => {
+    const vec = new Vector([1, 2, 3]);
+    expect(vec[0]).toBe(1);
+    expect(vec[1]).toBe(2);
+    expect(vec[2]).toBe(3);
+    expect(vec[3]).toBe(undefined);
   });
 });
