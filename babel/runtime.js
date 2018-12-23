@@ -196,7 +196,7 @@ function IsBadIndex(n) {
 export function Operators(table, ...tables) {
   const counter = OperatorCounter++;
 
-  table = cleanTable(table);
+  table = cleanTable(table, allOperators);
   const {left, right} = partitionTables(tables);
   const open = makeOpenSet(table.open);
 

@@ -113,3 +113,62 @@ describe("Operators without overloading registered", () => {
     expect(runtime._numericUnaryOperate('++', Object(2n), operators)).toBe(3n);
   });
 });
+
+describe('simple overloading', () => {
+
+  const Ops = runtime.Operators({
+    '+'(a, b) {
+      return new Vector(a.contents.map((elt, i) => elt + b.contents[i]));
+    }
+  });
+
+  class Vector extends Ops {
+    constructor(contents) { super(); this.contents = contents; }
+  }
+
+  const vec = new Vector([1, 2, 3]);
+
+  it('+ throws when not in operator set', () => {
+    const operators = runtime._declareOperators();
+    expect(() => runtime._additionOperator(vec, vec, operators)).toThrowError(TypeError);
+  });
+
+  it('+ is permitted among vectors, banned in interoperation', () => {
+    const operators = runtime._declareOperators();
+    runtime._withOperatorsFrom(operators, Vector);
+    expect(runtime._additionOperator(vec, vec, operators).contents[2]).toBe(6);
+    expect(() => runtime._additionOperator(vec, 1, operators)).toThrowError(TypeError);
+    expect(() => runtime._additionOperator(1, vec, operators)).toThrowError(TypeError);
+    expect(runtime._additionOperator(1, 1, operators)).toBe(2);
+  });
+});
+
+describe('overloading with interoperation', () => {
+
+  const Ops = runtime.Operators({ }, { left: Number,
+    '*'(a, b) {
+      return new Vector(b.contents.map(elt => a * elt));
+    }
+  });
+
+  class Vector extends Ops {
+    constructor(contents) { super(); this.contents = contents; }
+  }
+
+  const vec = new Vector([1, 2, 3]);
+
+  it('* throws when not in operator set', () => {
+    const operators = runtime._declareOperators();
+    expect(() => runtime._numericBinaryOperate('*', 2, vec, operators)).toThrowError(TypeError);
+  });
+
+  it('Number*Vector is permitted, other combinations banned', () => {
+    const operators = runtime._declareOperators();
+    runtime._withOperatorsFrom(operators, Vector);
+    // The following line fails
+    expect(runtime._numericBinaryOperate('*', 2, vec, operators).contents[2]).toBe(6);
+    expect(() => runtime._numericBinaryOperate('*', vec, vec, operators)).toThrowError(TypeError);
+    expect(() => runtime._numericBinaryOperate('*', vec, 2, operators)).toThrowError(TypeError);
+    expect(runtime._numericBinaryOperate('*', 2, 2, operators)).toBe(4);
+  });
+});
