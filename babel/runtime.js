@@ -319,11 +319,11 @@ export function _withOperatorsFrom(set, ...additions) {
 }
 
 function isNumeric(x) {
-  return typeof a === "number" || typeof a === "bigint";
+  return typeof x === "number" || typeof x === "bigint";
 }
 
 function isObject(x) {
-  return typeof x === "object" || typeof x === "function";
+  return typeof x === "object" && x !== null || typeof x === "function";
 }
 
 function hasOverloadedOperators(obj) {
@@ -354,7 +354,7 @@ function assertFunction(fn, operator) {
 function dispatchBinaryOperator(operator, a, b, operatorSet) {
   checkPermitted(a, operatorSet, operator);
   if (a[OperatorSet] === b[OperatorSet]) {
-    const fn = a[OperatorSet][operator];
+    const fn = a[OperatorSet].SelfOperatorDefinition[operator];
     assertFunction(fn, operator);
     return fn(a, b);
   } else {
@@ -390,7 +390,7 @@ export function _numericUnaryOperate(operator, a, operatorSet) {
   a = ToNumericOperand(a);
   
   checkPermitted(a, operatorSet, operator);
-  const fn = a[OperatorSet][operator];
+  const fn = a[OperatorSet].SelfOperatorDefinition[operator];
   assertFunction(fn, operator);
   return fn(a);
 }
@@ -423,11 +423,15 @@ export function _abstractEqualityComparison(x, y, operatorSet) {
   if (typeof x === typeof y && !isObject(x)) return x === y;
   if (x === null && y === void 0) return true;
   if (x === void 0 && y === null) return true;
-  if (typeof x === "boolean") return _abstractEqualityComparison(Number(x), y);
-  if (typeof y === "boolean") return _abstractEqualityComparison(x, Number(y));
+  if (typeof x === "boolean") {
+    return _abstractEqualityComparison(Number(x), y, operatorSet);
+  }
+  if (typeof y === "boolean") {
+    return _abstractEqualityComparison(x, Number(y), operatorSet);
+  }
   x = ToOperand(x);
   y = ToOperand(y);
-  if (!hasOverloadedOperators(x) && !hasOverlaodedOperators(y)) return x == y;
+  if (!hasOverloadedOperators(x) && !hasOverloadedOperators(y)) return x == y;
   return dispatchBinaryOperator("==", x, y, operatorSet);
 }
 
@@ -461,14 +465,14 @@ export function _abstractRelationalComparison(operator, a, b, operatorSet) {
       not = true;
       break;
     case ">=":
-      swap = true;
-      not = false;
+      swap = false;
+      not = true;
       break;
     default: throw new TypeError;
   }
   if (swap) { [a, b] = [b, a]; }
   let result;
-  if (!hasOverloadedOperators(x) && !hasOverlaodedOperators(y)) {
+  if (!hasOverloadedOperators(a) && !hasOverloadedOperators(b)) {
     result = a < b;
   } else {
     result = dispatchBinaryOperator("<", a, b, operatorSet);
