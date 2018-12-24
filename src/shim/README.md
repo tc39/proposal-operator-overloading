@@ -1,0 +1,1 @@
+This package contains runtime support for an [operator overloading proposal](https://github.com/littledan/proposal-operator-overloading/) for JavaScript, to be used in the Babel plugin `@littledan/plugin-transform-operator-overloading`.

@@ -1,4 +1,4 @@
-const runtime = require("../../build/runtime.js");
+const runtime = require("./build/shim.js");
 
 describe("Operators without overloading registered", () => {
   const operators = runtime._declareOperators();

@@ -1,11 +1,11 @@
 {
-  "name": "proposal-operator-overloading-polyfill",
+  "name": "@littledan/operator-overloading-shim",
   "version": "0.0.1",
-  "description": "Babel transform and runtime support for an operator overloading proposal",
-  "main": "runtime.js",
+  "description": "Shim for runtime support for an operator overloading proposal",
+  "main": "build/shim.js",
   "scripts": {
-    "test": "jasmine",
-    "build": "babel runtime.js -d build"
+    "test": "jasmine shim.spec.js",
+    "build": "babel shim.js -d build"
   },
   "repository": {
     "type": "git",
@@ -21,7 +21,7 @@
   "bugs": {
     "url": "https://github.com/littledan/proposal-operator-overloading/issues"
   },
-  "homepage": "https://github.com/littledan/proposal-operator-overloading#readme",
+  "homepage": "https://github.com/littledan/proposal-operator-overloading/blob/master/src/shim/README.md",
   "devDependencies": {
     "@babel/cli": "^7.2.3",
     "@babel/core": "^7.2.2",

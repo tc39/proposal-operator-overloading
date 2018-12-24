@@ -1,3 +1,9 @@
+// Runtime support for operator overloading
+
+// This module exports the Operators object and
+// a number of _-prefixed functions which a Babel
+// transform can call out to.
+
 // This code doesn't attempt to be 100% spec-compliant,
 // high-performance, or monkey-patch proof, but just to
 // get the basic cases right for prototyping.
