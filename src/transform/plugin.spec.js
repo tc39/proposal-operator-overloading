@@ -1,8 +1,12 @@
 const babel = require("@babel/core");
 const shim = require("@littledan/operator-overloading-shim");
 
+const debug = false;
+
 function transform(code) {
-  return babel.transform(code, { plugins: ["./build/plugin.js"] });
+  code = babel.transform(code, { plugins: ["./build/plugin.js"] }).code;
+  if (debug) console.log(code);
+  return code;
 }
 
 describe("overloading + works", () => {
@@ -24,7 +28,75 @@ describe("overloading + works", () => {
       val = vec2.contents[2];
     `);
     let val;
-    eval(code.code);
+    eval(code);
     expect(val).toBe(6);
   }); 
+});
+
+describe("test everything on a full wrapper of Numbers (no interoperation)", () => {
+  const Ops = shim.Operators({
+  '-'(a, b) { return a.n - b.n; },
+  '*'(a, b) { return a.n * b.n; },
+  '/'(a, b) { return a.n / b.n; },
+  '%'(a, b) { return a.n % b.n; },
+  '**'(a, b) { return a.n ** b.n; },
+  '&'(a, b) { return a.n & b.n; },
+  '^'(a, b) { return a.n ^ b.n; },
+  '|'(a, b) { return a.n | b.n; },
+  '<<'(a, b) { return a.n << b.n; },
+  '>>'(a, b) { return a.n >> b.n; },
+  '>>>'(a, b) { return a.n >>> b.n; },
+  '=='(a, b) { return a.n == b.n; },
+  '+'(a, b) { return a.n + b.n; },
+  '<'(a, b) { return a.n < b.n; },
+  'pos'(a) { return +a.n; },
+  'neg'(a) { return -a.n; },
+  '++'(a) { let x = a.n; return new MyNum(++x); },
+  '--'(a) { let x = a.n; return new MyNum(--x); },
+  '~'(a) { return ~a.n; },
+  });
+
+  class MyNum extends Ops {
+    constructor(n) { super(); this.n = n; }
+  }
+
+  it("works", () => {
+    eval(transform(`
+      let x = new MyNum(2);
+      let y = new MyNum(3);
+
+      expect(() => x+y).toThrowError(TypeError);
+      expect(() => x-y).toThrowError(TypeError);
+
+      withOperatorsFrom(MyNum);
+
+      expect(x+y).toBe(5);
+      expect(x-y).toBe(-1);
+      expect(x*y).toBe(6);
+      expect(x/y).toBe(2/3);
+      expect(x%y).toBe(2);
+      expect(x**y).toBe(8);
+      expect(x&y).toBe(2);
+      expect(x^y).toBe(1);
+      expect(x|y).toBe(3);
+      expect(x<<y).toBe(16);
+      expect(x>>y).toBe(0);
+      expect(x>>>y).toBe(0);
+      expect(x==y).toBe(false);
+      expect(x<y).toBe(true);
+      expect(x>y).toBe(false);
+      expect(x>y).toBe(false);
+      expect(+x).toBe(2);
+      expect(-x).toBe(-2);
+      expect(~x).toBe(-3);
+      expect((x++).n).toBe(2);
+      expect(x.n).toBe(3);
+      expect((x--).n).toBe(3);
+      expect(x.n).toBe(2);
+      expect((++x).n).toBe(3);
+      expect(x.n).toBe(3);
+      expect((--x).n).toBe(2);
+      expect(x.n).toBe(2);
+    `));
+  });
 });

@@ -67,8 +67,14 @@ const binaryOperatorTemplate = template(`
   SHIM._binary(OPERATOR, LEFT, RIGHT, OPERATORS)
 `);
 
-const postOperateTemplate = template(`
-  GENSYM = ARGUMENT, STATEMENT, GENSYM
+const preIncrementTemplate = template(`
+  EXPRESSION = SHIM._unary(OPERATOR, EXPRESSION, OPERATORS)
+`);
+
+const postIncrementTemplate = template(`
+  TEMPORARY = EXPRESSION,
+  EXPRESSION = SHIM._unary(OPERATOR, EXPRESSION, OPERATORS),
+  TEMPORARY
 `);
 
 function isWithOperatorsFrom(node) {
@@ -106,7 +112,6 @@ const visitBlockStatementLike = {
   }
 }
 
-const fixedUnaryOperators = new Set(["typeof", "void", "delete", "throw", "!"]);
 const fixedBinaryOperators = new Set(["===", "!==", "in", "instanceOf"]);
 
 export default declare(api => {
@@ -141,38 +146,40 @@ export default declare(api => {
       },
       UpdateExpression(path) {
         if (this.inactive()) return;
-        const operator = { "++": "pos", "--": "neg"}[path.node.operator];
-        const newValue = unaryOperatorTemplate({
-          SHIM: this.shim,
-          OPERATOR: t.StringLiteral(operator),
-          EXPRESSION: path.node.argument,
-          OPERATORS: this.peek().operators,
-        });
-        let statement = t.AssignmentOperator("=", path.node.argument, newValue);
-        if (!path.node.prefix) {
-          let gensym = path.scope.generateUidIdentifier("gensym");
-          // need to push it to a parent scope? path.scope.parent.push
-          statement = postOperateTemplate({
-            GENSYM: gensym,
-            ARGUMENT: path.node.argument,
-            STATEMENT: statement,
+        let statement;
+        if (path.node.prefix) {
+          statement = preIncrementTemplate({
+            SHIM: this.shim,
+            OPERATOR: t.StringLiteral(path.node.operator),
+            EXPRESSION: path.node.argument,
+            OPERATORS: this.peek().operators,
+          });
+        } else {
+          let temporary = path.scope.generateUidIdentifier("t");
+          statement = postIncrementTemplate({
+            SHIM: this.shim,
+            OPERATOR: t.StringLiteral(path.node.operator),
+            EXPRESSION: path.node.argument,
+            OPERATORS: this.peek().operators,
+            TEMPORARY: temporary,
           });
         }
         path.replaceWith(statement);
       },
       UnaryExpression(path) {
         if (this.inactive()) return;
-        if (fixedUnaryOperators.has(path.node.operator)) return;
+        const operator = { "+": "pos", "-": "neg", "~": "~"}[path.node.operator];
+        if (operator === undefined) return;
         path.replaceWith(unaryOperatorTemplate({
           SHIM: this.shim,
-          OPERATOR: t.StringLiteral(path.node.operator),
+          OPERATOR: t.StringLiteral(operator),
           EXPRESSION: path.node.argument,
           OPERATORS: this.peek().operators,
         }));
       },
       BinaryExpression(path) {
         if (this.inactive()) return;
-        if (fixedUnaryOperators.has(path.node.operator)) return;
+        if (fixedBinaryOperators.has(path.node.operator)) return;
         path.replaceWith(binaryOperatorTemplate({
           SHIM: this.shim,
           OPERATOR: t.StringLiteral(path.node.operator),
