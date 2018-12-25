@@ -37,12 +37,11 @@
 //   Operators:
 //     - Replace all x= operators with the expanded var = var x arg form
 //     - Replace all infix mathematical operators with calls to
-//       _shim._numericBinaryOperate(_operators) or special fns for
-//       +, == or comparison
-//     - Replace unary operators with _shim._numericUnaryOperate(_operators)
+//       _shim._binary(_operators)
+//     - Replace unary operators with _shim._unary(_operators)
 //     - Replace preincrement and postincrement operators with an
 //       assignment and call to the pos or neg operators, with
-//       _shim._numericUnaryOperate(_operators)
+//       _shim._unary(_operators)
 
 import { declare } from "@babel/helper-plugin-utils";
 import { template, types as t } from "@babel/core";
@@ -66,6 +65,10 @@ const unaryOperatorTemplate = template(`
 
 const binaryOperatorTemplate = template(`
   SHIM._binary(OPERATOR, LEFT, RIGHT, OPERATORS)
+`);
+
+const postOperateTemplate = template(`
+  GENSYM = ARGUMENT, STATEMENT, GENSYM
 `);
 
 function isWithOperatorsFrom(node) {
@@ -138,7 +141,24 @@ export default declare(api => {
       },
       UpdateExpression(path) {
         if (this.inactive()) return;
-        // TODO
+        const operator = { "++": "pos", "--": "neg"}[path.node.operator];
+        const newValue = unaryOperatorTemplate({
+          SHIM: this.shim,
+          OPERATOR: t.StringLiteral(operator),
+          EXPRESSION: path.node.argument,
+          OPERATORS: this.peek().operators,
+        });
+        let statement = t.AssignmentOperator("=", path.node.argument, newValue);
+        if (!path.node.prefix) {
+          let gensym = path.scope.generateUidIdentifier("gensym");
+          // need to push it to a parent scope? path.scope.parent.push
+          statement = postOperateTemplate({
+            GENSYM: gensym,
+            ARGUMENT: path.node.argument,
+            STATEMENT: statement,
+          });
+        }
+        path.replaceWith(statement);
       },
       UnaryExpression(path) {
         if (this.inactive()) return;
@@ -163,7 +183,25 @@ export default declare(api => {
       },
       AssignmentExpression(path) {
         if (this.inactive()) return;
-        // TODO
+        // Desugar assignment expressions so the visitor
+        // can implement operator overloading
+        const operator = {
+          "+=": "+",
+          "-=": "-",
+          "*=": "*",
+          "/=": "/",
+          "%=": "%",
+          "<<=": "<<",
+          ">>=": ">>",
+          ">>>=": ">>>",
+          "|=": "|",
+          "^=": "^",
+          "&=": "&",
+        }[path.node.operator];
+        if (operator === undefined) return;
+        const newValue = t.BinaryOperator(operator, path.node.left, path.node.right);
+        path.node.right = newValue;
+        path.node.operator = "=";
       },
     }
   };
