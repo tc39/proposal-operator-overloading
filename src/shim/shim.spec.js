@@ -1,116 +1,116 @@
-const shim = require("./build/shim.js");
+const shim = require("./build/internal.js");
 
 describe("Operators without overloading registered", () => {
   const operators = shim._declareOperators();
   it('addition on Numbers works as usual', () => {
-    expect(shim._additionOperator(1, 2, operators)).toBe(3);
+    expect(shim._binary("+", 1, 2, operators)).toBe(3);
   });
   it('addition on BigInt works as usual', () => {
-    expect(shim._additionOperator(1n, 2n, operators)).toBe(3n);
+    expect(shim._binary("+", 1n, 2n, operators)).toBe(3n);
   });
   it('addition on Strings works as usual', () => {
-    expect(shim._additionOperator("ab", "cd", operators)).toBe("abcd");
+    expect(shim._binary("+", "ab", "cd", operators)).toBe("abcd");
   });
   it('addition between String and Number', () => {
-    expect(shim._additionOperator("ab", 1, operators)).toBe("ab1");
-    expect(shim._additionOperator(1, "ab", operators)).toBe("1ab");
+    expect(shim._binary("+", "ab", 1, operators)).toBe("ab1");
+    expect(shim._binary("+", 1, "ab", operators)).toBe("1ab");
   });
   it('addition between String and BigInt', () => {
-    expect(shim._additionOperator("ab", 1n, operators)).toBe("ab1");
-    expect(shim._additionOperator(1n, "ab", operators)).toBe("1ab");
+    expect(shim._binary("+", "ab", 1n, operators)).toBe("ab1");
+    expect(shim._binary("+", 1n, "ab", operators)).toBe("1ab");
   });
   it('== works as usual', () => {
-    expect(shim._abstractEqualityComparison(1, 2, operators)).toBe(false);
-    expect(shim._abstractEqualityComparison(1, 2n, operators)).toBe(false);
-    expect(shim._abstractEqualityComparison(1, 1, operators)).toBe(true);
-    expect(shim._abstractEqualityComparison(1, 1n, operators)).toBe(true);
-    expect(shim._abstractEqualityComparison(1, true, operators)).toBe(true);
-    expect(shim._abstractEqualityComparison(1, false, operators)).toBe(false);
-    expect(shim._abstractEqualityComparison(0, false, operators)).toBe(true);
-    expect(shim._abstractEqualityComparison(1, "1", operators)).toBe(true);
-    expect(shim._abstractEqualityComparison("1", "1", operators)).toBe(true);
-    expect(shim._abstractEqualityComparison("1", "2", operators)).toBe(false);
-    expect(shim._abstractEqualityComparison("1", true, operators)).toBe(true);
-    expect(shim._abstractEqualityComparison(null, undefined, operators)).toBe(true);
-    expect(shim._abstractEqualityComparison(undefined, null, operators)).toBe(true);
-    expect(shim._abstractEqualityComparison(undefined, 0, operators)).toBe(false);
-    expect(shim._abstractEqualityComparison(undefined, NaN, operators)).toBe(false);
-    expect(shim._abstractEqualityComparison(null, NaN, operators)).toBe(false);
-    expect(shim._abstractEqualityComparison(null, 0, operators)).toBe(false);
+    expect(shim._binary("==", 1, 2, operators)).toBe(false);
+    expect(shim._binary("==", 1, 2n, operators)).toBe(false);
+    expect(shim._binary("==", 1, 1, operators)).toBe(true);
+    expect(shim._binary("==", 1, 1n, operators)).toBe(true);
+    expect(shim._binary("==", 1, true, operators)).toBe(true);
+    expect(shim._binary("==", 1, false, operators)).toBe(false);
+    expect(shim._binary("==", 0, false, operators)).toBe(true);
+    expect(shim._binary("==", 1, "1", operators)).toBe(true);
+    expect(shim._binary("==", "1", "1", operators)).toBe(true);
+    expect(shim._binary("==", "1", "2", operators)).toBe(false);
+    expect(shim._binary("==", "1", true, operators)).toBe(true);
+    expect(shim._binary("==", null, undefined, operators)).toBe(true);
+    expect(shim._binary("==", undefined, null, operators)).toBe(true);
+    expect(shim._binary("==", undefined, 0, operators)).toBe(false);
+    expect(shim._binary("==", undefined, NaN, operators)).toBe(false);
+    expect(shim._binary("==", null, NaN, operators)).toBe(false);
+    expect(shim._binary("==", null, 0, operators)).toBe(false);
   });
   it('== works with object wrappers', () => {
-    expect(shim._abstractEqualityComparison(Object(1), 2, operators)).toBe(false);
-    expect(shim._abstractEqualityComparison(Object(1), 2n, operators)).toBe(false);
-    expect(shim._abstractEqualityComparison(Object(1), 1, operators)).toBe(true);
-    expect(shim._abstractEqualityComparison(Object(1), 1n, operators)).toBe(true);
-    expect(shim._abstractEqualityComparison(Object(1), true, operators)).toBe(true);
-    expect(shim._abstractEqualityComparison(Object(1), false, operators)).toBe(false);
-    expect(shim._abstractEqualityComparison(Object(0), false, operators)).toBe(true);
-    expect(shim._abstractEqualityComparison(Object(1), "1", operators)).toBe(true);
-    expect(shim._abstractEqualityComparison(Object("1"), "1", operators)).toBe(true);
-    expect(shim._abstractEqualityComparison(Object("1"), "2", operators)).toBe(false);
-    expect(shim._abstractEqualityComparison(Object("1"), true, operators)).toBe(true);
+    expect(shim._binary("==", Object(1), 2, operators)).toBe(false);
+    expect(shim._binary("==", Object(1), 2n, operators)).toBe(false);
+    expect(shim._binary("==", Object(1), 1, operators)).toBe(true);
+    expect(shim._binary("==", Object(1), 1n, operators)).toBe(true);
+    expect(shim._binary("==", Object(1), true, operators)).toBe(true);
+    expect(shim._binary("==", Object(1), false, operators)).toBe(false);
+    expect(shim._binary("==", Object(0), false, operators)).toBe(true);
+    expect(shim._binary("==", Object(1), "1", operators)).toBe(true);
+    expect(shim._binary("==", Object("1"), "1", operators)).toBe(true);
+    expect(shim._binary("==", Object("1"), "2", operators)).toBe(false);
+    expect(shim._binary("==", Object("1"), true, operators)).toBe(true);
   });
   it('< works on primitives', () => {
-    expect(shim._abstractRelationalComparison('<', 1, 2, operators)).toBe(true);
-    expect(shim._abstractRelationalComparison('<', 2, 2, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('<', 3, 2, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('<', 1n, 2, operators)).toBe(true);
-    expect(shim._abstractRelationalComparison('<', 2n, 2, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('<', 3n, 2n, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('<', 1n, 2n, operators)).toBe(true);
-    expect(shim._abstractRelationalComparison('<', 2n, 2n, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('<', 3n, 2, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('<', "1", 2, operators)).toBe(true);
-    expect(shim._abstractRelationalComparison('<', "2", 2, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('<', "3", 2, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('<', "100", 11, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('<', "100", "11", operators)).toBe(true);
+    expect(shim._binary('<', 1, 2, operators)).toBe(true);
+    expect(shim._binary('<', 2, 2, operators)).toBe(false);
+    expect(shim._binary('<', 3, 2, operators)).toBe(false);
+    expect(shim._binary('<', 1n, 2, operators)).toBe(true);
+    expect(shim._binary('<', 2n, 2, operators)).toBe(false);
+    expect(shim._binary('<', 3n, 2n, operators)).toBe(false);
+    expect(shim._binary('<', 1n, 2n, operators)).toBe(true);
+    expect(shim._binary('<', 2n, 2n, operators)).toBe(false);
+    expect(shim._binary('<', 3n, 2, operators)).toBe(false);
+    expect(shim._binary('<', "1", 2, operators)).toBe(true);
+    expect(shim._binary('<', "2", 2, operators)).toBe(false);
+    expect(shim._binary('<', "3", 2, operators)).toBe(false);
+    expect(shim._binary('<', "100", 11, operators)).toBe(false);
+    expect(shim._binary('<', "100", "11", operators)).toBe(true);
   });
   it('< works on with object wrappers', () => {
-    expect(shim._abstractRelationalComparison('<', Object(1), 2, operators)).toBe(true);
-    expect(shim._abstractRelationalComparison('<', Object(2), 2, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('<', Object(3), 2, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('<', Object(1n), 2, operators)).toBe(true);
-    expect(shim._abstractRelationalComparison('<', Object(2n), 2, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('<', Object(3n), 2n, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('<', Object(1n), 2n, operators)).toBe(true);
-    expect(shim._abstractRelationalComparison('<', Object(2n), 2n, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('<', Object(3n), 2, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('<', Object("1"), 2, operators)).toBe(true);
-    expect(shim._abstractRelationalComparison('<', Object("2"), 2, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('<', Object("3"), 2, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('<', Object("100"), 11, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('<', Object("100"), "11", operators)).toBe(true);
+    expect(shim._binary('<', Object(1), 2, operators)).toBe(true);
+    expect(shim._binary('<', Object(2), 2, operators)).toBe(false);
+    expect(shim._binary('<', Object(3), 2, operators)).toBe(false);
+    expect(shim._binary('<', Object(1n), 2, operators)).toBe(true);
+    expect(shim._binary('<', Object(2n), 2, operators)).toBe(false);
+    expect(shim._binary('<', Object(3n), 2n, operators)).toBe(false);
+    expect(shim._binary('<', Object(1n), 2n, operators)).toBe(true);
+    expect(shim._binary('<', Object(2n), 2n, operators)).toBe(false);
+    expect(shim._binary('<', Object(3n), 2, operators)).toBe(false);
+    expect(shim._binary('<', Object("1"), 2, operators)).toBe(true);
+    expect(shim._binary('<', Object("2"), 2, operators)).toBe(false);
+    expect(shim._binary('<', Object("3"), 2, operators)).toBe(false);
+    expect(shim._binary('<', Object("100"), 11, operators)).toBe(false);
+    expect(shim._binary('<', Object("100"), "11", operators)).toBe(true);
   });
   it('> >= <= also work', () => {
-    expect(shim._abstractRelationalComparison('>', 1, 2, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('>', 2, 2, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('>', 3, 2, operators)).toBe(true);
-    expect(shim._abstractRelationalComparison('<=', 1, 2, operators)).toBe(true);
-    expect(shim._abstractRelationalComparison('<=', 2, 2, operators)).toBe(true);
-    expect(shim._abstractRelationalComparison('<=', 3, 2, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('>=', 1, 2, operators)).toBe(false);
-    expect(shim._abstractRelationalComparison('>=', 2, 2, operators)).toBe(true);
-    expect(shim._abstractRelationalComparison('>=', 3, 2, operators)).toBe(true);
+    expect(shim._binary('>', 1, 2, operators)).toBe(false);
+    expect(shim._binary('>', 2, 2, operators)).toBe(false);
+    expect(shim._binary('>', 3, 2, operators)).toBe(true);
+    expect(shim._binary('<=', 1, 2, operators)).toBe(true);
+    expect(shim._binary('<=', 2, 2, operators)).toBe(true);
+    expect(shim._binary('<=', 3, 2, operators)).toBe(false);
+    expect(shim._binary('>=', 1, 2, operators)).toBe(false);
+    expect(shim._binary('>=', 2, 2, operators)).toBe(true);
+    expect(shim._binary('>=', 3, 2, operators)).toBe(true);
   });
   it('* works', () => {
-    expect(shim._numericBinaryOperate('*', 2, 3, operators)).toBe(6);
-    expect(shim._numericBinaryOperate('*', "2", 3, operators)).toBe(6);
-    expect(shim._numericBinaryOperate('*', "2", "3", operators)).toBe(6);
-    expect(shim._numericBinaryOperate('*', 2n, 3n, operators)).toBe(6n);
-    expect(shim._numericBinaryOperate('*', Object(2), 3, operators)).toBe(6);
-    expect(shim._numericBinaryOperate('*', Object("2"), 3, operators)).toBe(6);
-    expect(shim._numericBinaryOperate('*', Object("2"), "3", operators)).toBe(6);
-    expect(shim._numericBinaryOperate('*', Object(2n), 3n, operators)).toBe(6n);
+    expect(shim._binary('*', 2, 3, operators)).toBe(6);
+    expect(shim._binary('*', "2", 3, operators)).toBe(6);
+    expect(shim._binary('*', "2", "3", operators)).toBe(6);
+    expect(shim._binary('*', 2n, 3n, operators)).toBe(6n);
+    expect(shim._binary('*', Object(2), 3, operators)).toBe(6);
+    expect(shim._binary('*', Object("2"), 3, operators)).toBe(6);
+    expect(shim._binary('*', Object("2"), "3", operators)).toBe(6);
+    expect(shim._binary('*', Object(2n), 3n, operators)).toBe(6n);
   });
   it('++ works', () => {
-    expect(shim._numericUnaryOperate('++', 2, operators)).toBe(3);
-    expect(shim._numericUnaryOperate('++', "2", operators)).toBe(3);
-    expect(shim._numericUnaryOperate('++', 2n,  operators)).toBe(3n);
-    expect(shim._numericUnaryOperate('++', Object(2), operators)).toBe(3);
-    expect(shim._numericUnaryOperate('++', Object("2"), operators)).toBe(3);
-    expect(shim._numericUnaryOperate('++', Object(2n), operators)).toBe(3n);
+    expect(shim._unary('++', 2, operators)).toBe(3);
+    expect(shim._unary('++', "2", operators)).toBe(3);
+    expect(shim._unary('++', 2n,  operators)).toBe(3n);
+    expect(shim._unary('++', Object(2), operators)).toBe(3);
+    expect(shim._unary('++', Object("2"), operators)).toBe(3);
+    expect(shim._unary('++', Object(2n), operators)).toBe(3n);
   });
 });
 
@@ -130,16 +130,16 @@ describe('simple overloading', () => {
 
   it('+ throws when not in operator set', () => {
     const operators = shim._declareOperators();
-    expect(() => shim._additionOperator(vec, vec, operators)).toThrowError(TypeError);
+    expect(() => shim._binary("+", vec, vec, operators)).toThrowError(TypeError);
   });
 
   it('+ is permitted among vectors, banned in interoperation', () => {
     const operators = shim._declareOperators();
     shim._withOperatorsFrom(operators, Vector);
-    expect(shim._additionOperator(vec, vec, operators).contents[2]).toBe(6);
-    expect(() => shim._additionOperator(vec, 1, operators)).toThrowError(TypeError);
-    expect(() => shim._additionOperator(1, vec, operators)).toThrowError(TypeError);
-    expect(shim._additionOperator(1, 1, operators)).toBe(2);
+    expect(shim._binary("+", vec, vec, operators).contents[2]).toBe(6);
+    expect(() => shim._binary("+", vec, 1, operators)).toThrowError(TypeError);
+    expect(() => shim._binary("+", 1, vec, operators)).toThrowError(TypeError);
+    expect(shim._binary("+", 1, 1, operators)).toBe(2);
   });
 });
 
@@ -159,16 +159,16 @@ describe('overloading on the right', () => {
 
   it('* throws when not in operator set', () => {
     const operators = shim._declareOperators();
-    expect(() => shim._numericBinaryOperate('*', 2, vec, operators)).toThrowError(TypeError);
+    expect(() => shim._binary('*', 2, vec, operators)).toThrowError(TypeError);
   });
 
   it('Number*Vector is permitted, other combinations banned', () => {
     const operators = shim._declareOperators();
     shim._withOperatorsFrom(operators, Vector);
-    expect(shim._numericBinaryOperate('*', 2, vec, operators).contents[2]).toBe(6);
-    expect(() => shim._numericBinaryOperate('*', vec, vec, operators)).toThrowError(TypeError);
-    expect(() => shim._numericBinaryOperate('*', vec, 2, operators)).toThrowError(TypeError);
-    expect(shim._numericBinaryOperate('*', 2, 2, operators)).toBe(4);
+    expect(shim._binary('*', 2, vec, operators).contents[2]).toBe(6);
+    expect(() => shim._binary('*', vec, vec, operators)).toThrowError(TypeError);
+    expect(() => shim._binary('*', vec, 2, operators)).toThrowError(TypeError);
+    expect(shim._binary('*', 2, 2, operators)).toBe(4);
   });
 });
 
@@ -188,16 +188,16 @@ describe('overloading on the left', () => {
 
   it('* throws when not in operator set', () => {
     const operators = shim._declareOperators();
-    expect(() => shim._numericBinaryOperate('*', 2, vec, operators)).toThrowError(TypeError);
+    expect(() => shim._binary('*', 2, vec, operators)).toThrowError(TypeError);
   });
 
   it('Number*Vector is permitted, other combinations banned', () => {
     const operators = shim._declareOperators();
     shim._withOperatorsFrom(operators, Vector);
-    expect(() => shim._numericBinaryOperate('*', 2, vec, operators)).toThrowError(TypeError);
-    expect(() => shim._numericBinaryOperate('*', vec, vec, operators)).toThrowError(TypeError);
-    expect(shim._numericBinaryOperate('*', vec, 2, operators).contents[2]).toBe(6);
-    expect(shim._numericBinaryOperate('*', 2, 2, operators)).toBe(4);
+    expect(() => shim._binary('*', 2, vec, operators)).toThrowError(TypeError);
+    expect(() => shim._binary('*', vec, vec, operators)).toThrowError(TypeError);
+    expect(shim._binary('*', vec, 2, operators).contents[2]).toBe(6);
+    expect(shim._binary('*', 2, 2, operators)).toBe(4);
   });
 });
 

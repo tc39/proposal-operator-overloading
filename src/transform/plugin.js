@@ -1,7 +1,5 @@
 // Babel plugin for operator overloading
 
-// Note, none of this code works at all; it's just a sketch
-
 // This plugin changes withOperatorsFrom() calls into declarations
 // of operator sets, and arithmetic operations into calls into the
 // operator overloading runtime, if they take place within a
@@ -55,11 +53,19 @@ const withOperatorsFromTemplate = template(`
 `);
 
 const requireShimTemplate = template(`
-  const SHIM = require("@littledan/operator-overloading-shim");
+  const SHIM = require("@littledan/operator-overloading-shim/internals.js");
 `);
 
 const declareOperatorsTemplate = template(`
   const OPERATORS = SHIM._declareOperators(OUTER);
+`);
+
+const unaryOperatorTemplate = template(`
+  SHIM._unary(OPERATOR, EXPRESSION, OPERATORS)
+`);
+
+const binaryOperatorTemplate = template(`
+  SHIM._binary(OPERATOR, LEFT, RIGHT, OPERATORS)
 `);
 
 function isWithOperatorsFrom(node) {
@@ -69,7 +75,7 @@ function isWithOperatorsFrom(node) {
 }
 
 const visitBlockStatementLike = {
-  pre(path, state) {
+  enter(path, state) {
     if (!path.node.body.some(isWithOperatorsFrom)) return;
     const prelude = [];
     if (state.shim === undefined) {
@@ -78,7 +84,7 @@ const visitBlockStatementLike = {
     }
     const operators = path.scope.generateUidIdentifier("operators");
     state.stack.push({operators, path});
-    const outer = state.stack.length === 0
+    const outer = state.inactive()
                 ? t.Identifier("undefined")
                 : state.peek().operator;
     prelude.push(declareOperatorsTemplate({
@@ -88,13 +94,16 @@ const visitBlockStatementLike = {
     }));
     path.unshiftContainer('body', prelude);
   },
-  post(path, state) {
+  exit(path, state) {
     if (state.peek().path === path) {
       state.stack.pop();
-      if (state.stack.length === 0) state.shim = undefined;
+      if (state.inactive()) state.shim = undefined;
     }
   }
 }
+
+const fixedUnaryOperators = new Set(["typeof", "void", "delete", "throw", "!"]);
+const fixedBinaryOperators = new Set(["===", "!==", "in", "instanceOf"]);
 
 export default declare(api => {
   api.assertVersion(7);
@@ -103,18 +112,19 @@ export default declare(api => {
     pre(state) {
       state.stack = [];
       state.peek = () => state.stack[state.stack.length - 1];
-    }
+      state.inactive = () => state.stack.length === 0;
+    },
     post(state) {
-      if (state.stack.length !== 0 || state.shim !== undefined) {
+      if (!state.inactive() || state.shim !== undefined) {
         throw "internal error";
       }
-    }
+    },
     visitor: {
       BlockStatement: visitBlockStatementLike,
       Program: visitBlockStatementLike,
       CallExpression(path, state) {
         if (!isWithOperatorsFrom(path.node)) return;
-        if (!path.parent.isExpressionStatement() || state.stack.length === 0) {
+        if (!t.isExpressionStatement(path.parent.node) || state.inactive()) {
           throw path.buildCodeFrameError(
              "withOperatorsFrom calls must be statements, not nested expressions.");
         }
@@ -123,8 +133,37 @@ export default declare(api => {
           SHIM: state.shim,
           OPERATORS: uid,
           ARGS: path.node.arguments
-        });
-      }
+        }));
+      },
+      UpdateExpression(path, state) {
+        if (state.inactive()) return;
+        // TODO
+      },
+      UnaryExpression(path, state) {
+        if (state.inactive()) return;
+        if (fixedUnaryOperators.has(path.node.operator)) return;
+        path.replaceWith(unaryOperatorTemplate({
+          SHIM: state.shim,
+          OPERATOR: path.node.operator,
+          EXPRESSION: path.node.argument,
+          OPERATORS: state.peek().operators,
+        }));
+      },
+      BinaryExpression(path, state) {
+        if (state.inactive()) return;
+        if (fixedUnaryOperators.has(path.node.operator)) return;
+        path.replaceWith(binaryOperatorTemplate({
+          SHIM: state.shim,
+          OPERATOR: path.node.operator,
+          LEFT: path.node.left,
+          RIGHT: path.node.right,
+          OPERATORS: state.peek().operators,
+        }));
+      },
+      AssignmentExpression(path, state) {
+        if (state.inactive()) return;
+        // TODO
+      },
     }
   };
 });
