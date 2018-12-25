@@ -26,4 +26,14 @@
 //      assignment and call to the pos or neg operators, with
 //      _numericUnaryOperate
 
-import 
+import { declare } from "@babel/helper-plugin-utils";
+import { types as t } from "@babel/core";
+
+export default declare(api => {
+  api.assertVersion(7);
+
+  return {
+    visitor: {
+    }
+  };
+});

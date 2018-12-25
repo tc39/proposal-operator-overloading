@@ -7,14 +7,10 @@
     "test": "jasmine shim.spec.js",
     "build": "babel shim.js -d build"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/littledan/proposal-operator-overloading.git"
-  },
+  "repository": "https://github.com/littledan/proposal-operator-overloading/tree/master/src/shim",
   "keywords": [
     "operator-overloading",
-    "tc39",
-    "babel"
+    "tc39"
   ],
   "author": "Daniel Ehrenberg",
   "license": "MIT",
