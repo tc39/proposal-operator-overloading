@@ -9,7 +9,7 @@
 // that comes with a parser change.
 
 // This plugin runs in a single visitor pass.
-// The state object is of the following form:
+// The this object has the following properties included in it:
 // {
 //    shim: uid of the required shim module (undefined when stack empty)
 //    stack: An Array of {
@@ -69,35 +69,36 @@ const binaryOperatorTemplate = template(`
 `);
 
 function isWithOperatorsFrom(node) {
-  return t.isCallExpression(node)
-      && t.isIdentifier(node.callee)
-      && node.callee.name === "withOperatorsFrom";
+  return t.isIdentifier(node.callee) && node.callee.name === "withOperatorsFrom";
 }
 
 const visitBlockStatementLike = {
-  enter(path, state) {
-    if (!path.node.body.some(isWithOperatorsFrom)) return;
+  enter(path) {
+    if (!path.node.body.some(statement =>
+        t.isExpressionStatement(statement) &&
+        t.isCallExpression(statement.expression) &&
+        isWithOperatorsFrom(statement.expression))) return;
     const prelude = [];
-    if (state.shim === undefined) {
-      state.shim = path.scope.generateUidIdentifier("shim");
-      prelude.push(requireShimTemplate({SHIM: state.shim}));
+    if (this.shim === undefined) {
+      this.shim = path.scope.generateUidIdentifier("shim");
+      prelude.push(requireShimTemplate({SHIM: this.shim}));
     }
     const operators = path.scope.generateUidIdentifier("operators");
-    state.stack.push({operators, path});
-    const outer = state.inactive()
+    this.stack.push({operators, path});
+    const outer = this.inactive()
                 ? t.Identifier("undefined")
-                : state.peek().operator;
+                : this.peek().operator;
     prelude.push(declareOperatorsTemplate({
       OPERATORS: operators,
-      SHIM: state.shim,
+      SHIM: this.shim,
       OUTER: outer,
     }));
     path.unshiftContainer('body', prelude);
   },
-  exit(path, state) {
-    if (state.peek().path === path) {
-      state.stack.pop();
-      if (state.inactive()) state.shim = undefined;
+  exit(path) {
+    if (this.peek().path === path) {
+      this.stack.pop();
+      if (this.inactive()) this.shim = undefined;
     }
   }
 }
@@ -109,59 +110,59 @@ export default declare(api => {
   api.assertVersion(7);
 
   return {
-    pre(state) {
-      state.stack = [];
-      state.peek = () => state.stack[state.stack.length - 1];
-      state.inactive = () => state.stack.length === 0;
+    pre() {
+      this.stack = [];
+      this.peek = () => this.stack[this.stack.length - 1];
+      this.inactive = () => this.stack.length === 0;
     },
-    post(state) {
-      if (!state.inactive() || state.shim !== undefined) {
+    post() {
+      if (!this.inactive() || this.shim !== undefined) {
         throw "internal error";
       }
     },
     visitor: {
       BlockStatement: visitBlockStatementLike,
       Program: visitBlockStatementLike,
-      CallExpression(path, state) {
+      CallExpression(path) {
         if (!isWithOperatorsFrom(path.node)) return;
-        if (!t.isExpressionStatement(path.parent.node) || state.inactive()) {
+        if (this.inactive()) {
           throw path.buildCodeFrameError(
              "withOperatorsFrom calls must be statements, not nested expressions.");
         }
-        const uid = state.peek().operators;
+        const uid = this.peek().operators;
         path.replaceWith(withOperatorsFromTemplate({
-          SHIM: state.shim,
+          SHIM: this.shim,
           OPERATORS: uid,
           ARGS: path.node.arguments
         }));
       },
-      UpdateExpression(path, state) {
-        if (state.inactive()) return;
+      UpdateExpression(path) {
+        if (this.inactive()) return;
         // TODO
       },
-      UnaryExpression(path, state) {
-        if (state.inactive()) return;
+      UnaryExpression(path) {
+        if (this.inactive()) return;
         if (fixedUnaryOperators.has(path.node.operator)) return;
         path.replaceWith(unaryOperatorTemplate({
-          SHIM: state.shim,
-          OPERATOR: path.node.operator,
+          SHIM: this.shim,
+          OPERATOR: t.StringLiteral(path.node.operator),
           EXPRESSION: path.node.argument,
-          OPERATORS: state.peek().operators,
+          OPERATORS: this.peek().operators,
         }));
       },
-      BinaryExpression(path, state) {
-        if (state.inactive()) return;
+      BinaryExpression(path) {
+        if (this.inactive()) return;
         if (fixedUnaryOperators.has(path.node.operator)) return;
         path.replaceWith(binaryOperatorTemplate({
-          SHIM: state.shim,
-          OPERATOR: path.node.operator,
+          SHIM: this.shim,
+          OPERATOR: t.StringLiteral(path.node.operator),
           LEFT: path.node.left,
           RIGHT: path.node.right,
-          OPERATORS: state.peek().operators,
+          OPERATORS: this.peek().operators,
         }));
       },
-      AssignmentExpression(path, state) {
-        if (state.inactive()) return;
+      AssignmentExpression(path) {
+        if (this.inactive()) return;
         // TODO
       },
     }

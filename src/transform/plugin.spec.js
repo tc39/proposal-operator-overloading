@@ -24,7 +24,7 @@ describe("overloading + works", () => {
       val = vec2.contents[0];
     `);
     let val;
-    eval(code);
+    eval(code.code);
     expect(val).toBe(6);
   }); 
 });
