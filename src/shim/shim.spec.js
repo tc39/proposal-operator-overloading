@@ -1,4 +1,4 @@
-const shim = require("./build/internal.js");
+const shim = require("./build/shim.js");
 
 describe("Operators without overloading registered", () => {
   const operators = shim._declareOperators();

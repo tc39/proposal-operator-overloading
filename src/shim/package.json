@@ -1,11 +1,11 @@
 {
   "name": "@littledan/operator-overloading-shim",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Shim for runtime support for an operator overloading proposal",
   "main": "build/shim.js",
   "scripts": {
     "test": "jasmine shim.spec.js",
-    "build": "babel internal.js shim.js -d build"
+    "build": "babel shim.js -d build"
   },
   "repository": "https://github.com/littledan/proposal-operator-overloading/tree/master/src/shim",
   "keywords": [

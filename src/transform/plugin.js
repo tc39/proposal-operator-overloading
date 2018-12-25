@@ -53,7 +53,7 @@ const withOperatorsFromTemplate = template(`
 `);
 
 const requireShimTemplate = template(`
-  const SHIM = require("@littledan/operator-overloading-shim/internals.js");
+  const SHIM = require("@littledan/operator-overloading-shim");
 `);
 
 const declareOperatorsTemplate = template(`

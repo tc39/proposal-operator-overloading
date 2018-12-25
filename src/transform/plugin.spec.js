@@ -21,7 +21,7 @@ describe("overloading + works", () => {
       withOperatorsFrom(Vector);
       const vec = new Vector([1, 2, 3]);
       const vec2 = vec + vec;
-      val = vec2.contents[0];
+      val = vec2.contents[2];
     `);
     let val;
     eval(code.code);
