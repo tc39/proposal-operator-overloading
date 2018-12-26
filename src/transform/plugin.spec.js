@@ -30,7 +30,7 @@ describe("overloading + works", () => {
     let val;
     eval(code);
     expect(val).toBe(6);
-  }); 
+  });
 });
 
 describe("test everything on a full wrapper of Numbers (no interoperation)", () => {
@@ -142,7 +142,7 @@ describe("nested scopes", () => {
       withOperatorsFrom(OpsB);
 
       expect(() => +a).toThrowError(TypeError);
-      expect(+b).toBe(1);
+      expect(+b).toBe(2);
       expect(() => a+b).toThrowError(TypeError);
 
       withOperatorsFrom(OpsA);
@@ -151,5 +151,44 @@ describe("nested scopes", () => {
       expect(+b).toBe(2);
       expect(a+b).toBe(3);
     `));
+
+    eval(transform(`
+      expect(() => +a).toThrowError(TypeError);
+      expect(() => +b).toThrowError(TypeError);
+      expect(() => a+b).toThrowError(TypeError);
+
+      withOperatorsFrom(OpsA, OpsB);
+
+      expect(+a).toBe(1);
+      expect(+b).toBe(2);
+      expect(a+b).toBe(3);
+    `));
   });
+
+  it("throws appropriate errors in nested code", () => {
+    eval(transform(`
+      expect(() => +a).toThrowError(TypeError);
+      expect(() => +b).toThrowError(TypeError);
+      expect(() => a+b).toThrowError(TypeError);
+
+      withOperatorsFrom(OpsA);
+
+      {
+        expect(+a).toBe(1);
+        expect(() => +b).toThrowError(TypeError);
+        expect(() => a+b).toThrowError(TypeError);
+
+        withOperatorsFrom(OpsB);
+
+        expect(+a).toBe(1);
+        expect(+b).toBe(2);
+        expect(a+b).toBe(3);
+      }
+
+      expect(+a).toBe(1);
+      expect(() => +b).toThrowError(TypeError);
+      expect(() => a+b).toThrowError(TypeError);
+    `));
+  });
+
 });

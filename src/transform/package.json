@@ -27,6 +27,6 @@
   "dependencies": {
     "@babel/core": "^7.2.2",
     "@babel/helper-plugin-utils": "^7.0.0",
-    "@littledan/operator-overloading-shim": "0.0.3"
+    "@littledan/operator-overloading-shim": "0.0.4"
   }
 }

@@ -93,10 +93,8 @@ const visitBlockStatementLike = {
       prelude.push(requireShimTemplate({SHIM: this.shim}));
     }
     const operators = path.scope.generateUidIdentifier("operators");
+    const outer = this.inactive() ? undefined : this.peek().operators;
     this.stack.push({operators, path});
-    const outer = this.inactive()
-                ? t.Identifier("undefined")
-                : this.peek().operator;
     prelude.push(declareOperatorsTemplate({
       OPERATORS: operators,
       SHIM: this.shim,
