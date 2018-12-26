@@ -174,7 +174,7 @@ function partitionTables(tables) {
 function makeOpenSet(open) {
   if (typeof open !== 'undefined') {
     open = [...open];
-    for (const operator in open) {
+    for (const operator of open) {
       if (!operatorSet.has(operator)) {
         throw new TypeError(`Unrecognized operator ${operator}`);
       }
@@ -204,9 +204,10 @@ function IsBadIndex(n) {
 export function Operators(table, ...tables) {
   const counter = OperatorCounter++;
 
+  let open = table.open;
   table = cleanTable(table, allOperators);
   const {left, right} = partitionTables(tables);
-  const open = makeOpenSet(table.open);
+  open = makeOpenSet(open);
 
   const set = {
     OperatorCounter: counter,

@@ -293,3 +293,22 @@ describe('[] overloading', () => {
     expect(vec[2]).toBe(1);
   });
 });
+
+describe("Open set handling", () => {
+  it("works for +", () => {
+    const OpsA = shim.Operators({
+      open: ["+"]
+    });
+    const a = new OpsA;
+
+    const OpsB = shim.Operators({ }, {
+      left: OpsA,
+      '+'(a, b) { return 3; }
+    });
+    const b = new OpsB;
+
+    const operators = shim._declareOperators();
+    shim._withOperatorsFrom(operators, OpsA, OpsB);
+    expect(shim._binary("+", a, b, operators)).toBe(3);
+  });
+});

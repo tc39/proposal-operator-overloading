@@ -100,3 +100,56 @@ describe("test everything on a full wrapper of Numbers (no interoperation)", () 
     `));
   });
 });
+
+describe("nested scopes", () => {
+  const OpsA = shim.Operators({
+    'pos'(a) { return 1; },
+    open: ["+"]
+  });
+  const a = new OpsA;
+
+  const OpsB = shim.Operators({
+    'pos'(b) { return 2; }
+  }, { left: OpsA,
+    '+'(a, b) { return 3; }
+  });
+  const b = new OpsB;
+
+  it("throws appropriate errors in straight line code", () => {
+    eval(transform(`
+      expect(() => +a).toThrowError(TypeError);
+      expect(() => +b).toThrowError(TypeError);
+      expect(() => a+b).toThrowError(TypeError);
+
+      withOperatorsFrom(OpsA);
+
+      expect(+a).toBe(1);
+      expect(() => +b).toThrowError(TypeError);
+      expect(() => a+b).toThrowError(TypeError);
+
+      withOperatorsFrom(OpsB);
+
+      expect(+a).toBe(1);
+      expect(+b).toBe(2);
+      expect(a+b).toBe(3);
+    `));
+
+    eval(transform(`
+      expect(() => +a).toThrowError(TypeError);
+      expect(() => +b).toThrowError(TypeError);
+      expect(() => a+b).toThrowError(TypeError);
+
+      withOperatorsFrom(OpsB);
+
+      expect(() => +a).toThrowError(TypeError);
+      expect(+b).toBe(1);
+      expect(() => a+b).toThrowError(TypeError);
+
+      withOperatorsFrom(OpsA);
+
+      expect(+a).toBe(1);
+      expect(+b).toBe(2);
+      expect(a+b).toBe(3);
+    `));
+  });
+});

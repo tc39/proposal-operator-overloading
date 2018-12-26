@@ -1,6 +1,6 @@
 {
   "name": "@littledan/operator-overloading-shim",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Shim for runtime support for an operator overloading proposal",
   "main": "build/shim.js",
   "scripts": {
