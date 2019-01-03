@@ -67,12 +67,13 @@ The definition of `==`(x, y):
 1. If Type(y) is Boolean, return the result of the comparison x == ToNumber(y).
 1. If Type(x) is Object and x does not have an [[OperatorSet]] internal slot, set x to ToPrimitive(x).
 1. If Type(y) is Object and y does not have an [[OperatorSet]] internal slot, set y to ToPrimitive(y).
-1. Return DispatchBinaryOperator(a, b).
+1. If a === b is *true*, return *true*.
+1. Return DispatchBinaryOperator('==', a, b), but return *false* on a missing method rather than throwing a TypeError.
 
 The definition of [Abstract Relational Comparison](https://tc39.github.io/ecma262/#sec-abstract-relational-comparison), which ends up defining <, <=, >, >=:
 1. Set a to ToOperand(a, hint Number), and set b to ToOperand(b, hint Number), in the order driven by their order in code.
 1. If a and b are both strings, follow the current logic for comparing two strings.
-1. Otherwise, follow the remaining steps for an ordinary overloaded binary operator, given a and b, using the common lessThan operator for the operation.
+1. Otherwise, return DispatchBinaryOperator('<', a, b).
 
 Note that String can only be overloaded for the above operators, and cannot be usefully overloaded for the below "numerical" operators.
 
