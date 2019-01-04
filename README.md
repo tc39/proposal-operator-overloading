@@ -1,6 +1,8 @@
 # Operator overloading in JavaScript
 
-Should JavaScript support operator overloading? This document examines why we might consider it and how it could work.
+Should JavaScript support operator overloading? It's not clear one way or another whether operator overloading has enough benefit in terms of the complexity, in terms of language design, implementation work, and security surface. At the same time, there's an argument that it's better to provide general operator overloading than to overload operators for specific, additional, built-in constructs (and partly for this reason, Decimal was not added as part of ES6, although it might have been useful for JS developers).
+
+This article tries to examine how operator overloading *could* look, if we want to go in this direction. Hopefully, the concreteness will help us decide whether to go down this path, which can help move the committee towards concrete next steps on long-standing feature requests, one way or another.
 
 (Status: Not at a stage; not presented in TC39)
 
@@ -334,9 +336,18 @@ Symbols would allow monkey-patching and a general lack of robustness. They don't
 
 This proposal only allows overloading built-in operators, because:
 
+- There's significant concern about "punctuation overload" in JavaScript programs, already growing more fragile with private fields/methods (`#`) and decorators (`@`). Too many kinds of punctuation could make programs hard to read.
 - User-defined precedence for such tokens is unworkable to parse.
 - Hopefully the [pipeline operator](https://github.com/tc39/proposal-pipeline-operator) and [optional chaining](https://github.com/tc39/proposal-optional-chaining) will solve many of the cases that would motivate these operators.
 - We deliberately want to limit the syntactic divergence of JavaScript programs.
+
+User-defined operator tokens may be a worthwhile proposal, but I (littledan) would be somewhat uncomfortable championing them for the above reasons.
+
+### Why doesn't this proposal allow ordinary functions to be called in infix contexts?
+
+For example, Haskell permits this capability, using backticks.
+
+Such a capability could be useful, but it incurs the issues with adding more punctuation (see the previous Q/A entry), while not providing as terse results as overloading built-in operators. Method chaining or the pipeline operator can be used in many of the cases where infix function application could also be used.
 
 ### Should operator overloading use inheritance-based multiple dispatch involving the prototype chain?
 
