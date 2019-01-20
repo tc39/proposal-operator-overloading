@@ -165,7 +165,7 @@ document.querySelector("#element").style.paddingLeft = 3_em + 2_px;
     - Support operands of different types and the same type, as in the above examples.
     - Explain all of JS's behavior on existing types in terms of operator overloading.
     - Available in both strict and sloppy mode, with and without class syntax.
-- Predicability
+- Predictability
     - The meaning of operators on existing objects shouldn't be overridable
       or monkey-patchable, both for built-in types and for objects defined in
       other libraries.
