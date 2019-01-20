@@ -19,7 +19,7 @@ This example, like many of the following ones, also uses the [extended numeric l
 ```js
 // Usage example
 import { Decimal, _m } from "./decimal.mjs";
-with operators from Decimal;  // Enable operator overloading for decimals
+@use: operators(Decimal);  // Enable operator overloading for decimals
 
 1_m + 2_m     // ==> 3_m
 3_m * 2_m     // ==> 6_m
@@ -70,7 +70,7 @@ JavaScript is increasingly used for data processing and analysis, with libraries
 ```js
 // Usage example
 import { Vector } from "./vector.mjs";
-with operators from Vector;
+@use: operators(Vector);
 
 new Vector([1, 2, 3]) + new Vector([4, 5, 6])   // ==> new Vector([5, 7, 9])
 3 * new Vector([1, 2, 3])                       // ==> new Vector([3, 6, 9])
@@ -151,7 +151,7 @@ Tab Atkins [proposed](https://www.xanthir.com/b4UD0) that CSS support syntax in 
 In this case, the CSSNumericValue platform objects would come with operator overloading already enabled. Their definition in the CSS Typed OM specification would, indirectly, make use of the same JavaScript mechanism that
 
 ```js
-with operators from CSSNumericValue;
+@use: operators(CSSNumericValue);
 const { _px, _em } = CSS;
 
 document.querySelector("#element").style.paddingLeft = 3_em + 2_px;
@@ -193,7 +193,7 @@ This proposal includes several subtle design decisions to nudge the ecosystem in
     - When one operand is an ordinary Object and the other is an Object with overloaded operators, the ordinary object is first coerced to some kind of primitive, making it less useful unless both operands were set up for overloading.
 - ToPrimitive, ToNumber, ToString, etc are *not* extended to ever return non-primitives.
 - Only built-in operators are supported; there are no user-defined operators.
-- Using overloaded operators requires the `with operators from` statement, adding a little bit of friction, so overloaded operators are more likely to be used when they "pay for" that friction themselves from the perspective of a library user.
+- Using overloaded operators requires the `@use: operators` statement, adding a little bit of friction, so overloaded operators are more likely to be used when they "pay for" that friction themselves from the perspective of a library user.
 
 ## Usage documentation
 
@@ -219,11 +219,11 @@ The following operators do not support overloading:
 - `,` (just returns the right operand)
 - With future proposals, `|>`, `?.`, `?.[`, `?.(`, `??` (based on function calls, property access, and checks against the specific null/undefined values, so similar to the above)
 
-To use operator overloading, import a module that exports a class, and enable operators on it using a `with operators from` declaration.
+To use operator overloading, import a module that exports a class, and enable operators on it using a `@use: operators` declaration.
 
-### `with operators from` declarations
+### `@use: operators` declarations
 
-Operator overloading is only enabled for the classes that you specifically opt in to. To do this overloading, use a `with operators from` declaration, follwed by a comma-separated list of classes that overload operators that you want to enable.
+Operator overloading is only enabled for the classes that you specifically opt in to. To do this overloading, use a `@use: operators` declaration, follwed by a comma-separated list of classes that overload operators that you want to enable. This declaration is a form of [built-in decorator](https://github.com/littledan/proposal-built-in-decorators/).
 
 For example, if you have two classes, `Vector` and `Scalar`, which support overloaded operators, you can
 
@@ -232,7 +232,7 @@ import { Vector, Scalar } from "./module.mjs";
 
 new Vector([1, 2, 3]) * new Scalar(3);  // TypeError: operator overloading on Vector and Scalar is not enabled
 
-with operators from Vector, Scalar;
+@use: operators(Vector, Scalar);
 
 new Vector([1, 2, 3]) * new Scalar(3);  // Works, returning new Vector([3, 6, 9])
 ````
@@ -307,7 +307,7 @@ function addOverloads(obj) {
   return obj;
 }
 ```
-The reason that this would modify the existing instance is that `SubClass` would put operator overloading behavior on whatever is returned from the super constructor, and that super constructor returns the existing object! Even if you don't use `with operators from`, there is suddenly different behavior when using operators on the object (throwing exceptions).
+The reason that this would modify the existing instance is that `SubClass` would put operator overloading behavior on whatever is returned from the super constructor, and that super constructor returns the existing object! Even if you don't use `@use: operators`, there is suddenly different behavior when using operators on the object (throwing exceptions).
 
 Let's avoid this level of dynamic-ness, and make the language more predictable by keeping it a static, unchange-able property of an object whether it overloads operators or not.
 
