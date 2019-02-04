@@ -7,7 +7,7 @@ Most programming lanuguage designers have to consider operator semantics at some
 
 #### A static set of operators are overloadable
 
-Languages: Python, Ruby, Lua, [Matlab](https://www.mathworks.com/help/matlab/matlab_oop/implementing-operators-for-your-class.html), Kotlin, C#, Rust ([considered and rejected](https://github.com/rust-lang/rfcs/issues/818))
+Languages: Python, Ruby, Lua, [Matlab](https://www.mathworks.com/help/matlab/matlab_oop/implementing-operators-for-your-class.html), Kotlin, C#, Rust ([considered and rejected](https://github.com/rust-lang/rfcs/issues/818)), [AssemblyScript](https://github.com/AssemblyScript/assemblyscript/blob/master/tests/compiler/std/operator-overloading.ts)
 
 This seems to be the most common pattern. Within this, it's also common to define some operators in terms of others, as this proposal does.
 
