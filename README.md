@@ -4,7 +4,7 @@ Should JavaScript support operator overloading? It's not clear one way or anothe
 
 This article tries to examine how operator overloading *could* look, if we want to go in this direction. Hopefully, the concreteness will help us decide whether to go down this path, which can help move the committee towards concrete next steps on long-standing feature requests, one way or another.
 
-(Status: Not at a stage; not presented in TC39)
+Status: Stage 0; to be presented at the December 2019 TC39 meeting
 
 ## Case studies
 
@@ -12,71 +12,70 @@ Operator overloading is all about enabling richer libraries. This section gives 
 
 ### Numeric types
 
-JavaScript has a very restricted set of numeric types. Traditionally, it had just Number: an IEEE-754 double-precision binary float. The [BigInt proposal](http://github.com/tc39/proposal-bigint/) (shipping in Chrome) added a single new numeric type for arbitrary-size integers. But there are more numeric types that developers need in practice, such as decimals, rationals, complex numbers, etc. Operator overloading can provide these, with intuitive syntax for their use.
+JavaScript has a very restricted set of numeric types. Traditionally, it had just Number: an IEEE-754 double-precision binary float. The Stage 4 [BigInt proposal](http://github.com/tc39/proposal-bigint/) added a single new numeric type for arbitrary-size integers. But there are more numeric types that developers need in practice, such as decimals, rationals, complex numbers, etc. Operator overloading can provide these, with intuitive syntax for their use.
 
-This example, like many of the following ones, also uses the [extended numeric literals](https://github.com/tc39/proposal-extended-numeric-literals) proposal as well.
-
-```js
+```mjs
 // Usage example
-import { Decimal, _m } from "./decimal.mjs";
-@use: operators(Decimal);  // Enable operator overloading for decimals
+import Decimal from "./decimal.mjs";
+with operators from Decimal;  // Enable operator overloading for decimals
+                              // Declaration may use some other syntax
 
-1_m + 2_m     // ==> 3_m
-3_m * 2_m     // ==> 6_m
-1_m == 1_m    // ==> true
-1_m == 1      // ==> true
-1 == 1m       // ==> true
-1_m === 1     // ==> false (not overloadable)
+Decimal(1) + Decimal(2)       // ==> Decimal(3)
+Decimal(3) * Decimal(2)       // ==> Decimal(6)
+Decimal(1) == Decimal(1)      // ==> true
+Decimal(1) == 1               // ==> true
+1 == Decimal(1)               // ==> true
+Decimal(1) === 1              // ==> false (not overloadable)
+```
 
+A possible implementation of this module:
+
+```mjs
 // -------------
 // decimal.mjs
-// Implementation of the type
 
 import Big from './big.mjs';  // https://github.com/MikeMcl/big.js/
 
-// Decorator-based API for operator overloading
-export
-@Operators.overloaded
-class Decimal extends Operators {
-  #big;
-  constructor(arg) { this.#big = new Big(arg); }
+const DecimalOperators = Operators({
+  "+"(a, b) { return a._big.plus(b._big); },
+  "*"(a, b) { return a._big.times(b._big); },
+  "=="(a, b) { return a.#big.eq(b.#big); },
+}, {
+  left: Number, {
+    "=="(a, b) { return b._big.eq(a); }
+  }
+}, {
+  right: Number, {
+    "=="(a, b) { return a._big.eq(b); }
+  }
+});
 
-  @Operators.define("+")
-  #plus(a, b) { return a.#big.plus(b.#big); }
-
-  @Operators.define("*")
-  #times(a, b) { return a.#big.times(b.#big); }
-
-  @Operators.define("==")
-  #decimalEqualsDecimal(a, b) { return a.#big.eq(b.#big); }
-
-  @Operators.define("==", { left: Number })
-  #numberEqualsDecimal(a, b) { return b.#big.eq(a); }
-
-  @Operators.define("==", { right: Number })
-  #decimalEqualsNumber(a, b) { return a.#big.eq(b); }
+export default
+class Decimal extends DecimalOperators {
+  _big;
+  constructor(arg) { this._big = new Big(arg); }
 }
-
-// Definition in terms of extensible literals proposal
-export function _m(obj) {
-  return new Decimal(obj.string);
-}
+Object.preventExtensions(Decimal);  // ensure the operators don't change
 ```
 
 ### Matrix/vector computations
 
 JavaScript is increasingly used for data processing and analysis, with libraries like [stdlib](https://stdlib.io/). These calculations are made a bit more awkward because things involving vector, matrix and tensor calculations need to be done all via method chaining, rather than more naturally using operators as they can in many other programming languages. Operator overloading could provide that natural phrasing.
 
-```js
+```mjs
 // Usage example
 import { Vector } from "./vector.mjs";
-@use: operators(Vector);
+with operators from Vector;
 
 new Vector([1, 2, 3]) + new Vector([4, 5, 6])   // ==> new Vector([5, 7, 9])
 3 * new Vector([1, 2, 3])                       // ==> new Vector([3, 6, 9])
 new Vector([1, 2, 3]) == new Vector([1, 2, 3])  // ==> true
 (new Vector([1, 2, 3]))[1]                      // ==> 2
+```
 
+A possible implementation:
+
+```mjs
 // ----------------
 // vector.mjs
 // This example uses the "Imperative API".
@@ -132,6 +131,8 @@ It's unfortunate that the equation has to be written twice, once to explain it a
 
 ```js
 function predict(x) {
+  with operators from tf.equation;
+
   // y = a * x ^ 3 + b * x ^ 2 + c * x + d
   return tf.tidy(() => {
     return a * x ** 3_int32
@@ -151,10 +152,9 @@ Tab Atkins [proposed](https://www.xanthir.com/b4UD0) that CSS support syntax in 
 In this case, the CSSNumericValue platform objects would come with operator overloading already enabled. Their definition in the CSS Typed OM specification would, indirectly, make use of the same JavaScript mechanism that
 
 ```js
-@use: operators(CSSNumericValue);
-const { _px, _em } = CSS;
+with operators from CSSNumericValue;
 
-document.querySelector("#element").style.paddingLeft = 3_em + 2_px;
+document.querySelector("#element").style.paddingLeft = Css.em(3) + CSS.px(2);
 ```
 
 ## Design goals
@@ -207,21 +207,21 @@ The following operators may have overloaded behavior:
 - Mathematical operators: unary `+`, `-`, `++`, `--`; binary `+`, `-`, `*`, `/`, `%`, `**`
 - Bitwise operators: unary `~`; binary `&`, `^`, `|`, `<<`, `>>`, `>>>`
 - Comparison operators: `==`, `<`, `>`, `<=`, `>=`
-- Integer-indexed property access: `[]`, `[]=`
+- Possibly, integer-indexed property access: `[]`, `[]=`
 
 The definition of `>`, `<=` and `>=` is derived from `<`, and the definition of assigning operators like `+=` is derived  their corresponding binary operator, for example `+`.
 
 The following operators do not support overloading:
 - `!`, `&&`, `||` (boolean operations--always does ToBoolean first, and then works with the boolean)
 - `===` and the built-in SameVale and SameValueZero operations (always uses the built-in strict equality definition)
-- `.` and `[]` (these are property access; use Proxy to overload)
+- `.` and `[]` with non-integer values (these are property access; use Proxy to overload)
 - `()` (calling a function--use a Proxy to overload)
 - `,` (just returns the right operand)
 - With future proposals, `|>`, `?.`, `?.[`, `?.(`, `??` (based on function calls, property access, and checks against the specific null/undefined values, so similar to the above)
 
 To use operator overloading, import a module that exports a class, and enable operators on it using a `@use: operators` declaration.
 
-### `@use: operators` declarations
+### `with operators from` declarations
 
 Operator overloading is only enabled for the classes that you specifically opt in to. To do this overloading, use a `@use: operators` declaration, follwed by a comma-separated list of classes that overload operators that you want to enable. This declaration is a form of [built-in decorator](https://github.com/littledan/proposal-built-in-decorators/).
 
@@ -232,43 +232,14 @@ import { Vector, Scalar } from "./module.mjs";
 
 new Vector([1, 2, 3]) * new Scalar(3);  // TypeError: operator overloading on Vector and Scalar is not enabled
 
-@use: operators(Vector, Scalar);
+with operators from Vector, Scalar;
 
 new Vector([1, 2, 3]) * new Scalar(3);  // Works, returning new Vector([3, 6, 9])
 ````
 
 The scope of enabling operators is based on JavaScript blocks (e.g., you can enable operators within a specific function, rather than globally). By default, built-in types like `String`, `Number` and `BigInt` already have operators enabled.
 
-### Decorator definition interface
-
-Recommended usage:
-```js
-@Operators.overloaded
-class MyClass extends Operators {
-  @Operators.define("+")
-  static add(a, b) { /* ... */ }
-}
-```
-
-The `Operators` object has two properties which are decorators:
-
-#### `@Operators.define`
-
-`@Operators.define` is a method decorator used to say that a particular method is used as the definition of an operator. The particular operator is indicated as a string argument to `@Operators.define`. The methods are called with two arguments, for both operands, and `undefined` as the `this` value.
-
-An optional second argument can be of the form `{ left: OtherClass }` or `{ right: OtherClass }`--this will define the overload when `MyClass` is one operand and the other operand is an instance of `OtherClass`. To be accepted, the `OtherClass` must have this operator in the set of operators it's open to definitions for.
-
-#### `@Operators.overloaded`
-
-`@Operators.overloaded` is a class decorator used on classes that overload operators.
-
-`@Operators.overloaded` takes a single optional argument, which is an options bag, that has one option, `open`, which is an Array of operators which are allowed to be overloaded by future types, with one operand being of this type and the other of a future-defined type.
-  
-Classes that define operators must extend `Operators`.
-
-### Low-level, function-style definition interface
-
-The above decorator interface provides convenient syntactic sugar over the functional interface, described in this section.
+### The `Operators` factory function
 
 Recommended usage:
 ```js
@@ -293,27 +264,23 @@ For a detailed investigation, see [LANGCOMP.md](https://github.com/littledan/pro
 
 ### Can this work with subclasses, rather than only defining overloading on base classes?
 
-That would be equivalent to giving overloading behavior to existing objects. For example, the following code would add operator overloading behvior to an unsuspecting object if we permitted operator overloading to be triggered by a decorator on a class that inherited from any other class, rather than just inheriting from `Operators`:
+That would be equivalent to giving overloading behavior to existing objects. For example, imagine `SubclassOperators` as a sort of mixin for `Operators`, taking the superclass as its first argument, and then added operator overloading behavior to the return value of the superclass's constructor. Then, the following code would add operator overloading behvior to an unsuspecting object if we permitted operator overloading to be triggered by a decorator on a class that inherited from any other class!
 
 ```js
 function addOverloads(obj) {
   class SuperClass { constructor() { return obj; } }
-  @Operators.overloaded
-  class SubClass extends SuperClass {
-    @Operators.define("+")
-    #add(a, b) { /* ... */ }
-  }
+  class SubClass extends SubclassOperators(SuperClass, {"+"(a, b) { /* ... */ }}) {}
   new SubClass(obj);
   return obj;
 }
 ```
-The reason that this would modify the existing instance is that `SubClass` would put operator overloading behavior on whatever is returned from the super constructor, and that super constructor returns the existing object! Even if you don't use `@use: operators`, there is suddenly different behavior when using operators on the object (throwing exceptions).
+The reason that this would modify the existing instance is that `SubClass` would put operator overloading behavior on whatever is returned from the super constructor, and that super constructor returns the existing object! Even if you don't use `with operators from`, there is suddenly different behavior when using operators on the object (throwing exceptions).
 
 Let's avoid this level of dynamic-ness, and make the language more predictable by keeping it a static, unchange-able property of an object whether it overloads operators or not.
 
 ### Can't we allow monkey-patching, for mocking, etc?
 
-You can do mocking by creating a separate operator-overloaded class which works like the one you're trying to mock, or even interacts with it. Or, you can make your own hooks into the operator definitions to allow mocking. But letting any code reach into the definition of the operators for any other type risks making operators much less reliable than JavaScript programmers are acustomed to.
+You can do mocking by creating a separate operator-overloaded class which works like the one you're trying to mock, or even interacts with it. Or, you can make your own hooks into the operator definitions to allow mocking. But letting any code reach into the definition of the operators for any other type risks making operators much less reliable than JavaScript programmers are accustomed to.
 
 ### Why does this have to be based on classes? I don't like classes!
 
@@ -323,10 +290,11 @@ It doesn't *have* to be based on classes, but the reason the above examples use 
 function makePoint(obj) { return Object.assign(new pointOps, obj); }
 const pointOps = Operators({ "+"(a, b) { return makePoint({x: a.x + b.x, y: a.y + b.y}); });
 let point = makePoint({ x: 1, y: 2 });
+with operators from pointOps;
 (point + point).y;  // 4
 ```
 
-In the future, value types and/or value types might give a more ergonomic, non-class-based syntax.
+In the future, value types and/or typed objects could give a more ergonomic syntax which might not involve classes.
 
 ### Why not use symbols instead of a whole new dispatch mechanism?
 
@@ -362,9 +330,19 @@ If you have operators defined in two different modules, then to define overloads
 
 ### How does operator overloading relate to other proposals?
 
-#### BigInt
+#### Decorators
 
-[BigInt](https://github.com/tc39/proposal-bigint/) provides definitions for how operators work on just one new type. This proposal generalizes that to types defined in JavaScript.
+[Decorators](https://github.com/tc39/proposal-decorators/) (Stage 2) could be used for a more ergonomic way to define operator overloading, as described in a previous version of this README. However, the decorators proposal is not yet stable, with changes still being discussed, so it's a bit early to propose a concrete decorator syntax for operator overloading.
+
+#### BigInt and BigDecimal
+
+[BigInt](https://github.com/tc39/proposal-bigint/) (Stage 4) provides definitions for how operators work on just one new type, representing arbitrary-precision integers. [BigDecimal](https://github.com/littledan/proposal-bigdecimal) (Stage 0) represents another, for arbitrary-precision decimals. This proposal generalizes that to types defined in JavaScript.
+
+#### Records and Tuples
+
+[Records and Tuples](https://github.com/tc39/proposal-record-tuple) (Stage 1) provides a deeply immutable compound primitive notion, superficially analogous to Objects and Arrays, with value semantics.
+
+If either operator overloading and records and tuples advances past Stage 1, then a next step for the other proposal would be to define semantics for the two features to be used together. One possibility is that for the return value of `Operators` to have a method that would take a Record or Tuple and return a new one with operators overloaded (details TBD).
 
 #### Typed Objects and Value Types
 
@@ -372,11 +350,13 @@ If you have operators defined in two different modules, then to define overloads
 
 Value Types is an idea in TC39 about user-definable primitive types. At some points in the past, it was proposed that operator overloading be tied to value types.
 
+Neither proposal is currently championed in TC39, but Records and Tuples presents a sort of first step towards Value Types.
+
 When these proposals mature more, it will be good to look into how operator overloading can be enabled for Typed Objects and Value Types. The idea in this repository is to not limit operator overloading to those two types of values, but to also permit operator overloading for ordinary objects.
 
 #### Extended numeric literals
 
-The [extended numeric literals](https://github.com/tc39/proposal-extended-numeric-literals) proposal allows numeric-like types such as `3_px` or `5.2_m` to be defined and used ergonomically.  Extended numeric literals and operator overloading fit well together, as the examples in this README show, but they don't depend on each other and can each be used separately.
+The [extended numeric literals](https://github.com/tc39/proposal-extended-numeric-literals) proposal (Stage 1) allows numeric-like types such as `3@px` or `5.2@m` to be defined and used ergonomically.  Extended numeric literals and operator overloading could fit well together, but they don't depend on each other and can each be used separately. This README omits use of extended numeric literals, for simplicity and to focus on the operator overloading aspects.
 
 ### How does operator overloading interact with Proxy and membrane systems?
 
@@ -388,11 +368,11 @@ A membrane system which runs early in the program's execution (like the freeze-t
 
 `with operator from` declarations provide a further defense: Those declarations prove that the piece of the program has access to (a piece of) the class defining overloaded operators. This works because the lookup of the internal slot `[[OperatorSetDefinition]]` does is not transparent to Proxies. A membrane system can deny access to that original operator set, and instead replace it with a separate class which overloads operators in a membrane-mediated way. In this way, even if an overloaded value "leaks", the right to call its operators is controlled by the class, which forms a capability object.
 
-### Why does this include `[]`, which isn't an operator but rather property access?
+### Could this proposal allow overloading `[]`?
 
-ES6 introduced Proxy, which lets developers define custom semantics for property access. Unfortunately, this capability has certain issues:
-- It's not possible to use both Proxy and the mechanism in this repository together, since operator overloading doesn't forward through Proxy.
-- Proxy has proven difficult to optimize in JS engines, in part due to how general the interface is. The proposal for overloading `[]` is much more restricted in its power, potentially making it more optimizable.
-- From the perspective of many JavaScript developers and even library authors, it's an "implementation detail" that array index access is based on JavaScript property access; for them, overloading this way is consistent with their mental model.
+Possibly. `[]` is property access, not an operator as such. ES6 introduced Proxy, which lets developers define custom semantics for property access. Unfortunately, this capability has certain issues:
+- This proposal is based on `Operators` factories, which produce constructors that return new objects with operator overloading. `Proxy` also returns new object instances. It's not possible to use both Proxy and the mechanism in this repository together, since operator overloading doesn't forward through Proxy traps. Therefore, some other mechanism is needed.
+- Proxy has so far not yet been optimized in JavaScript engines as much as some might hope. It's not clear exactly what the cause is, but one factor may be how general Proxy capabilities are. The proposal for overloading `[]` is much more restricted in its power, potentially making it more easily optimizable.
+- From the perspective of many JavaScript developers and even library authors, at a high level, it's an "implementation detail" that array index access is based on JavaScript property access; for them, overloading this way is consistent with their mental model.
 
-The overloading of `[]` proposed here is based on the semantics of Integer Indexed Exotic Objects, and doesn't add or change anything about JavaScript's meta-object protocol.
+The overloading of `[]` proposed here would be based on the semantics of Integer Indexed Exotic Objects. It wouldn't add or change anything about JavaScript's meta-object protocol, and it would only change the semantics of objects with overloading of `[]` declared.
