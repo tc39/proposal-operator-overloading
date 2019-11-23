@@ -135,8 +135,8 @@ function predict(x) {
 
   // y = a * x ^ 3 + b * x ^ 2 + c * x + d
   return tf.tidy(() => {
-    return a * x ** 3_int32
-         + b * x ** 2_int32
+    return a * x ** tf.scalar(3, 'int32')
+         + b * x.square()
          + c * x
          + d;
   });
