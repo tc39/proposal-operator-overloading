@@ -39,7 +39,7 @@ import Big from './big.mjs';  // https://github.com/MikeMcl/big.js/
 const DecimalOperators = Operators({
   "+"(a, b) { return a._big.plus(b._big); },
   "*"(a, b) { return a._big.times(b._big); },
-  "=="(a, b) { return a.#big.eq(b.#big); },
+  "=="(a, b) { return a._big.eq(b._big); },
 }, {
   left: Number, {
     "=="(a, b) { return b._big.eq(a); }
