@@ -20,7 +20,7 @@ Each Operator Set record has the following fields, none of which are ever modifi
 
 Built-in Operator Sets exist for the built-in numeric primitive types: String, BigInt and Number. The phrase "the Operator Set of `x`" refers to `x.[[OperatorSet]]` if `x` is an object, and the built-in Operator Set for those four types, which describes the currently specified behavior.
 
-Note, String overloading only supports the +, == and < operators, and not the other "numeric" operators. Boolean and Symbol may not have operators overloaded on them.
+Note, String overloading only supports the == and < operators, and not the other "numeric" operators. Boolean and Symbol may not have operators overloaded on them.
 
 ### Operator usage semantics
 
@@ -39,7 +39,7 @@ DispatchBinaryOperator(operator, a, b):
     1. If the common operator set does not have a definition for the operator in its `[[SelfOperatorDefinition]]` table, throw a TypeError.
     1. Otherwise, apply the definition to the arguments and return the result.
 1. Otherwise, if a's operator set has a lower `[[OperatorCounter]]` than b's operator set,
-    1. Find the relevant operator definition table in the b.`[[OperatorSet]]`.`[[OperatorCounter]]`'th element of a.`[[OperatorSet]]`.`[[RightOperatorDefinitions]]`.
+    1. Find the relevant operator definition table in the a.[[OperatorSet]].[[OperatorCounter]]'th element of  b.[[OperatorSet]].[[RightOperatorDefinitions]].
     1. If the operator is `~empty~` in that operator definition table, throw a TypeError.
     1. Otherwise, apply the operator to the arguments using the operator table.
 1. Otherwise, b's operator set has a lower `[[OperatorCounter]]` than a's operator set,
