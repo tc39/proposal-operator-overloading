@@ -103,7 +103,7 @@ const visitBlockStatementLike = {
     path.unshiftContainer('body', prelude);
   },
   exit(path) {
-    if (this.peek().path === path) {
+    if (this.peek() && (this.peek().path === path)) {
       this.stack.pop();
       if (this.inactive()) this.shim = undefined;
     }
