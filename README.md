@@ -264,7 +264,7 @@ For a detailed investigation, see [LANGCOMP.md](https://github.com/littledan/pro
 
 ### Can this work with subclasses, rather than only defining overloading on base classes?
 
-That would be equivalent to giving overloading behavior to existing objects. For example, imagine `SubclassOperators` as a sort of mixin for `Operators`, taking the superclass as its first argument, and then added operator overloading behavior to the return value of the superclass's constructor. Then, the following code would add operator overloading behvior to an unsuspecting object if we permitted operator overloading to be triggered by a decorator on a class that inherited from any other class!
+That would be equivalent to giving overloading behavior to existing objects. For example, imagine `SubclassOperators` as a sort of mixin for `Operators`, taking the superclass as its first argument, and then added operator overloading behavior to the return value of the superclass's constructor. Then, the following code would add operator overloading behavior to an unsuspecting object if we permitted operator overloading to be triggered by a decorator on a class that inherited from any other class!
 
 ```js
 function addOverloads(obj) {
