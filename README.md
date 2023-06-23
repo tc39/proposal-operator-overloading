@@ -260,7 +260,7 @@ Note: The `Operators` function and the above decorators could be exposed from a 
 
 For a detailed investigation, see [LANGCOMP.md](https://github.com/littledan/proposal-operator-overloading/blob/master/LANGCOMP.md). tl;dr:
 - It's a pretty popular design choice to conservatively support overloading only on some operators, and to define some in terms of others, as this proposal does. User-defined operators have been difficult to varying extents in other programming languages.
-- The way this proposal dispatches on the two operands is somewhat novel, most similar to Matlab. Unfortunately, of the established, popular mechanisms meet the design goals articulated in this document.
+- The way this proposal dispatches on the two operands is somewhat novel, most similar to Matlab. Unfortunately, none of the established, popular mechanisms meet the design goals articulated in this document.
 
 ### Can this work with subclasses, rather than only defining overloading on base classes?
 
