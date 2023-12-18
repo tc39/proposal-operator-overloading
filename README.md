@@ -4,7 +4,7 @@ Should JavaScript support operator overloading? It's not clear one way or anothe
 
 This article tries to examine how operator overloading *could* look, if we want to go in this direction. Hopefully, the concreteness will help us decide whether to go down this path, which can help move the committee towards concrete next steps on long-standing feature requests, one way or another.
 
-Status: Stage 1
+Status: **Withdrawn**
 
 ## Case studies
 
