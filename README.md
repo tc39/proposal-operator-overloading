@@ -326,7 +326,7 @@ This proposal has opted against using something like Slate's Prototype Multiple 
 
 ### If you define your other-type overloads based on a previously defined type, how do you know which type came first?
 
-If you have operators defined in two different modules, then to define overloads between them, import one module from the other, and don't make a circularity between the two. If you do this, the loading order wil lbe determinstic. The one that imports the other one is responsible for defining the overloads between the two types.
+If you have operators defined in two different modules, then to define overloads between them, import one module from the other, and don't make a circularity between the two. If you do this, the loading order will be deterministic. The one that imports the other one is responsible for defining the overloads between the two types.
 
 ### How does operator overloading relate to other proposals?
 
