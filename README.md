@@ -41,13 +41,11 @@ const DecimalOperators = Operators({
   "*"(a, b) { return a._big.times(b._big); },
   "=="(a, b) { return a._big.eq(b._big); },
 }, {
-  left: Number, {
-    "=="(a, b) { return b._big.eq(a); }
-  }
+  left: Number,
+  "=="(a, b) { return b._big.eq(a); }
 }, {
-  right: Number, {
-    "=="(a, b) { return a._big.eq(b); }
-  }
+  right: Number,
+  "=="(a, b) { return a._big.eq(b); }
 });
 
 export default
